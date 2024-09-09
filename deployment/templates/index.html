@@ -19,7 +19,7 @@
     <style>
         body {
             background-color: #f1f1f1;
-            font-family: Arial, sans-serif;
+            font-family: sans-serif;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -430,15 +430,15 @@
 
         function convert_diacritics() {
             text = document.getElementById('outputText').value;
-            init_graf = "diaro";
+            orthography = "diaro";
 
             if (document.getElementById('diaro').style.textDecoration !== "none") {
-                init_graf = "cunia";
+                orthography = "cunia";
             }
 
             requestData = {
                 text: text,
-                init_graf: init_graf
+                orthography: orthography
             }
 
             fetch('/diacritics', {
