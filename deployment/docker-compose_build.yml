@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   web:
-    image: readable/arotranslate:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
     restart: always
     environment:
       - FLASK_DEBUG=False
@@ -15,8 +17,8 @@ services:
       - MEMCACHED_URI=memcached://memcached:11211
     ports:
       - "5000:5000"
-    #volumes:
-    #  - .:/app
+    volumes:
+      - .:/app
     command: "flask --app app run"
     networks:
       - net
