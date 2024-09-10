@@ -6,7 +6,8 @@ from transformers import AutoTokenizer
 from config import Config
 from utils.text_processing import (clean_text,
                                    cunia_to_diaro,
-                                   diaro_to_cunia,)
+                                   diaro_to_cunia,
+                                   post_process)
 
 logger = logging.getLogger(__name__)
 
@@ -56,4 +57,8 @@ def translate_text(text, lang_from, lang_to):
         ])
 
     total_time = time.time() - start_time
-    return " ".join(Y), total_time
+
+    translated_text = " ".join(Y)
+    translated_text = post_process(translated_text)
+  
+    return translated_text, total_time
