@@ -18,13 +18,17 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 if Config.TALISMAN:
+    logger.info("Using Talisman...")
     Talisman(app, force_https=True)
+
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+logger.info(f'{Config.STORAGE_URI}  {Config.RATE_LIMIT}')
+
 limiter = Limiter(get_remote_address,
-                  app=app,
-                  default_limits=[Config.RATE_LIMIT],
-                  storage_uri=f"memcached://{Config.MEMCACHED}",
-                  )
+                app=app,
+                default_limits=[Config.RATE_LIMIT],
+                storage_uri=Config.STORAGE_URI,
+                )
 
 
 @app.route("/")
@@ -73,7 +77,6 @@ def translate():
     )
 
 
-
 @app.route("/diacritics", methods=["POST"])
 @limiter.limit("50 per minute")
 def diacritics():
@@ -96,4 +99,4 @@ def diacritics():
 
 
 if __name__ == "__main__":
-    app.run(debug=Config.FLASK_DEBUG, port=Config.FLASK_PORT, host=Config.FLASK_HOST)
+    app.run()
