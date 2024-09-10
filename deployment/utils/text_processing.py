@@ -281,7 +281,9 @@ def smart_join_words(words):
     for i, word in enumerate(words):
         if i == 0:
             arr.append(word)
-        elif word[0] in string.punctuation:
+        elif word[0] in string.punctuation and word[0] not in ['(', '-']:
+            arr[-1] += word
+        elif len(arr[-1]) > 0 and arr[-1][-1] in ['(', '-']:
             arr[-1] += word
         else:
             arr.append(word)
