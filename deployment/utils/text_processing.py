@@ -135,6 +135,7 @@ def convert_other_chars(text):
     text = text.replace("Θ", "Th")
     text = text.replace("δ", "dh")
     text = text.replace("Δ", "Dh")
+    text = text.replace("ā", "ã")
     return text
 
 
