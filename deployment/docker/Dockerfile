@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-RUN apt-get update && apt-get install -y wget
+RUN apt-get update && apt-get install -y wget python3-gevent
 RUN wget https://github.com/senisioi/AroTranslate/releases/download/test0/NLLB-rup-ron-eng-ct2-v2.tar.gz && \
     tar -xvf NLLB-rup-ron-eng-ct2-v2.tar.gz && \
     rm NLLB-rup-ron-eng-ct2-v2.tar.gz

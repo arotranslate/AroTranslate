@@ -9,3 +9,5 @@ protobuf
 pymemcache
 flask-talisman
 pandas
+gunicorn
+gevent

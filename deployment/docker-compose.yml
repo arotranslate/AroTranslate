@@ -17,7 +17,7 @@ services:
       - "5000:5000"
     #volumes:
     #  - .:/app
-    command: "flask --app app run"
+    command: "bash start.sh"
     networks:
       - net
     depends_on:
