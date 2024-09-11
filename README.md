@@ -18,16 +18,16 @@ We present the first comprehensive Aromanian Translator, a 100k+ sentences aroma
 
 ## Motivation
 
-Aromanian is an Eastern Romance language, part of the Proto-Romanian language family. With more than 300k speakers, it has a rich cultural heritage but remains underrepresented in modern technological advancements, particularly in the field of natural language processing. 
+Aromanian is an [Eastern Romance](https://glottolog.org/resource/languoid/id/east2714.bigmap.html#6/43.573/19.213) language, part of the Proto-Romanian language family. Aromanian has a rich cultural heritage but remains underrepresented in modern technological advancements, particularly in the field of natural language processing. 
 <br><br>
 Spoken mainly in Greece, Albania, Romania but also North Macedonia, Bulgaria, and Serbia, the Aromanian language has the [endangered](https://endangeredlanguages.com/lang/963) status as speakers tend to assimilate more and more with their national language and culture, and do not pass the tongue to the new generations.
 <br><br>
-There are very little initiatives for supporting the Aromanian language, mostly due to the governments lack of help. It is only oficially recognized in [North Macedonia and Albania](https://en.wikipedia.org/wiki/Aromanian_language#:~:text=2021%20Australian%20census.-,Official%20status,subject%20in%20some%20primary%20schools.). 
+There are very little initiatives for supporting the Aromanian language and it is only oficially recognized in [North Macedonia and Albania](https://en.wikipedia.org/wiki/Aromanian_language#:~:text=2021%20Australian%20census.-,Official%20status,subject%20in%20some%20primary%20schools.). 
 <br><br>
+
 This project, through the tools and data it presents, aims to:
-- make digital content more accesible
-- allow young Aromanians (and not only) to reconnect with their languages
-- increase interest for this subject, especially within the academic medium
+- make digital content more accesible for Aromanian speakers
+- contribute to linguistic research of Eastern Romance languages
 
 ## Deliverables
 The following are released:
@@ -41,7 +41,7 @@ As Aromanian is very sparsely documented in the digital space, it was very hard 
 <br><br>
 Our 100k+ samples corpus is definetely better than previous attempts, enabling coherent translations, but it's still a low resource corpus. We plan on making our sources and corpus fully accessible but we still have to solve some copyright issues. The models are however not affected by this issue. Any contributions you can make regarding the corpus will be very apreciatted (see [Contribute](#Contribute)).
 <br><br>
-Note that Aromanian is split into multiple [variaties](https://en.wikipedia.org/wiki/Aromanian_dialects), influenced by languages in the region. We do not know what the split of these is in our corpus, but the variaties are mostly mutually intelligible. Another problem, common with poorly documented tongues, is that the grammar and writing systems are not standardized. We chose to convert all Aromanian text to the Cunia (1997) ortography, as it's the most popular within Aromanians, it's the easiest to type on a keyboard (important, as our objective is public deployment) and it's also easier for the tokenizer to process. You can view the conversion code in `deployment/utils.py`.
+Note that Aromanian is split into multiple [variaties](https://en.wikipedia.org/wiki/Aromanian_dialects), influenced by languages in the region. We do not know what the split of these is in our corpus, but the variaties are mostly mutually intelligible. Another problem, common with poorly documented tongues, is that the grammar and writing systems are not standardized. We chose to convert all Aromanian text to the Cunia (1997) ortography, for practical reasons when typing and when tokenizing the texts, but we also provide conversions to the linguistically-motivated DIARO standard. You can view the conversion code in `deployment/utils.py`.
 <br>
 
 <div align="center">
@@ -88,7 +88,7 @@ git clone https://huggingface.co/alexjerpelea/NLLB-rup-ron-eng-ct2-v2
 
 Local deploy 🤗
 ```
-python main.py
+python app.py
 ```
 
 ## License
