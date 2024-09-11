@@ -1,4 +1,4 @@
-name: Deploy to QA
+name: Deploy to Unibuc
 on:
   # the 1st condition
   workflow_run:
@@ -22,4 +22,4 @@ jobs:
         run: ssh-keyscan -H ${{ secrets.CI_SSH_HOST }} >> ~/.ssh/known_hosts
 
       - name: Pull and deploy
-        run: ssh ${{ secrets.CI_SSH_USER }}@${{ secrets.CI_SSH_HOST }} "cd /home/snisioi/aromanian/arotransweb_latest/deployment && ./pull_and_deploy.sh"
+        run: ssh ${{ secrets.CI_SSH_USER }}@${{ secrets.CI_SSH_HOST }} "cd /home/snisioi/aromanian/arotransweb_latest/deployment && bash ./pull_and_deploy.sh"
