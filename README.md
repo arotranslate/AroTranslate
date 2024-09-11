@@ -18,7 +18,7 @@ We present the first comprehensive Aromanian Translator, a 100k+ sentences aroma
 
 ## Motivation
 
-Aromanian is an [Eastern Romance](https://glottolog.org/resource/languoid/id/east2714.bigmap.html#6/43.573/19.213) language, part of the Proto-Romanian language family. Aromanian has a rich cultural heritage but remains underrepresented in modern technological advancements, particularly in the field of natural language processing. 
+Aromanian is a language that is part of the [Eastern Romance](https://glottolog.org/resource/languoid/id/east2714.bigmap.html#6/43.573/19.213) familiy together with Standard Romanian, Megleno-Romanian and Istro-Romanian. Aromanian has a rich cultural heritage but remains underrepresented in modern technological advancements, particularly in the field of natural language processing. 
 <br><br>
 Spoken mainly in Greece, Albania, Romania but also North Macedonia, Bulgaria, and Serbia, the Aromanian language has the [endangered](https://endangeredlanguages.com/lang/963) status as speakers tend to assimilate more and more with their national language and culture, and do not pass the tongue to the new generations.
 <br><br>
