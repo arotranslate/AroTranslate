@@ -187,7 +187,7 @@ def post_process(text):
 
 def tokenize(text):
     # return text.split(" ")
-    return [token.text for token in TOKENIZER(text)]
+    return TOKENIZER(text) #[token.text for token in TOKENIZER(text)]
 
 
 def get_mask(s, index):
@@ -277,6 +277,7 @@ def resolve_with_dictionary(word):
 def smart_join_words(words):
     """Join words with spaces, but handle the case
     when there words end or begin with punctuation
+    Currently this method is not used.
     """
     arr = []
     for i, word in enumerate(words):
@@ -297,12 +298,17 @@ def cunia_to_diaro(text):
     # tokens can be found in the dictionary
     # TODO: use sentencepiece
     words = tokenize(text)
+    white_spaces = []
     arr = []
     for word in words:
-        resolved = word
-        if "ã" in word:
-            resolved = resolve_with_dictionary(word)
+        resolved = word.text
+        if "ã" in resolved:
+            resolved = resolve_with_dictionary(word.text)
             if not resolved:
-                resolved = resolve_with_ngrams(word)
+                resolved = resolve_with_ngrams(word.text)
         arr.append(convert_consonants_diaro(resolved))
-    return smart_join_words(arr)
+        white_spaces.append(word.whitespace_)
+    reconstructed_text = "".join(
+        w + s for w, s in zip(arr, white_spaces)
+    )
+    return reconstructed_text
