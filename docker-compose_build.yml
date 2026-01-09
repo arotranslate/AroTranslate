@@ -1,0 +1,53 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    restart: always
+    environment:
+      - FLASK_DEBUG=False
+      - MODEL_LOAD_NAME=NLLB-rup-ron-eng-ct2-v2
+      - MAX_INPUT_TOKENS=1024
+      - BATCH_SIZE=4
+      - MAX_OUTPUT_TOKENS=1024
+      - FLASK_RUN_PORT=5000
+      - FLASK_RUN_HOST=0.0.0.0
+      - MEMCACHED_URI=memcached://memcached:11211
+      - MONGODB_URI=mongodb://mongodb:27017/
+      - MONGODB_DATABASE=arotranslate
+    ports:
+      - "5003:5000"
+    volumes:
+      - .:/app
+    command: "flask --app app run"
+    networks:
+      - net
+    depends_on:
+      - memcached
+      - mongodb
+
+  memcached:
+    image: memcached:latest
+    restart: always
+    ports:
+      - "11211:11211"
+    networks:
+      - net
+
+  mongodb:
+    image: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - net
+
+networks:
+  net:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local

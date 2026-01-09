@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard - Translation Annotations</title>
+    <link
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+    />
+    <style>
+      body {
+        background-color: #f1f1f1;
+        font-family: sans-serif;
+        min-height: 100vh;
+      }
+
+      .navbar {
+        background-color: #343a40;
+        padding: 1rem 2rem;
+      }
+
+      .navbar-brand {
+        color: #fff;
+        font-weight: bold;
+        font-size: 1.5rem;
+      }
+
+      .container-main {
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+      }
+
+      .stats-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .stats-number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #007bff;
+      }
+
+      .annotation-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s;
+      }
+
+      .annotation-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      }
+
+      .annotation-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #f1f1f1;
+        padding-bottom: 10px;
+      }
+
+      .annotation-id {
+        font-family: monospace;
+        color: #6c757d;
+        font-size: 0.9rem;
+      }
+
+      .annotation-date {
+        color: #6c757d;
+        font-size: 0.9rem;
+      }
+
+      .text-section {
+        margin-bottom: 15px;
+      }
+
+      .text-label {
+        font-weight: bold;
+        color: #495057;
+        margin-bottom: 5px;
+      }
+
+      .text-content {
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 4px;
+        border-left: 3px solid #007bff;
+      }
+
+      .annotations-list {
+        margin-top: 10px;
+      }
+
+      .annotation-span {
+        display: inline-block;
+        padding: 4px 8px;
+        margin: 4px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+      }
+
+      .level-1 {
+        background-color: #fff3cd;
+        border: 1px solid #ffc107;
+        color: #856404;
+      }
+
+      .level-2 {
+        background-color: #f8d7da;
+        border: 1px solid #dc3545;
+        color: #721c24;
+      }
+
+      .pagination-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 20px;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .loading {
+        text-align: center;
+        padding: 40px;
+        color: #6c757d;
+      }
+
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #f5c6cb;
+      }
+
+      .btn-group {
+        display: flex;
+        gap: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="container-fluid">
+        <span class="navbar-brand">
+          <i class="fas fa-database"></i> Translation Annotations Dashboard
+        </span>
+        <a href="/" class="btn btn-outline-light btn-sm">
+          <i class="fas fa-home"></i> Back to Translator
+        </a>
+      </div>
+    </nav>
+
+    <div class="container container-main">
+      <!-- Loading State -->
+      <div id="loadingState" class="loading">
+        <i class="fas fa-spinner fa-spin fa-3x"></i>
+        <p class="mt-3">Loading annotations...</p>
+      </div>
+
+      <!-- Error State -->
+      <div id="errorState" class="error" style="display: none">
+        <strong>Error:</strong> <span id="errorMessage"></span>
+      </div>
+
+      <!-- Annotations List -->
+      <div id="annotationsList"></div>
+
+      <!-- Pagination Controls -->
+      <div
+        id="paginationControls"
+        class="pagination-controls"
+        style="display: none"
+      >
+        <button class="btn btn-secondary" id="prevBtn" onclick="previousPage()">
+          <i class="fas fa-chevron-left"></i> Previous
+        </button>
+        <span>Page <span id="pageNumber">1</span></span>
+        <button class="btn btn-primary" id="nextBtn" onclick="nextPage()">
+          Next <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <script>
+      let currentOffset = 0;
+      const limit = 100;
+
+      async function fetchAnnotations() {
+        const loadingState = document.getElementById("loadingState");
+        const errorState = document.getElementById("errorState");
+        const annotationsList = document.getElementById("annotationsList");
+        const paginationControls =
+          document.getElementById("paginationControls");
+
+        loadingState.style.display = "block";
+        errorState.style.display = "none";
+        annotationsList.innerHTML = "";
+
+        try {
+          const response = await fetch(
+            `/annotations?limit=${limit}&offset=${currentOffset}`
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          document.getElementById("pageNumber").textContent =
+            Math.floor(currentOffset / limit) + 1;
+
+          // Display annotations
+          if (data.annotations.length === 0) {
+            annotationsList.innerHTML =
+              '<div class="annotation-card"><p class="text-center text-muted">No annotations found.</p></div>';
+          } else {
+            data.annotations.forEach((annotation) => {
+              annotationsList.appendChild(createAnnotationCard(annotation));
+            });
+          }
+
+          // Show/hide pagination buttons
+          document.getElementById("prevBtn").disabled = currentOffset === 0;
+          document.getElementById("nextBtn").disabled =
+            data.returned_count < limit;
+          paginationControls.style.display = "flex";
+        } catch (error) {
+          console.error("Error fetching annotations:", error);
+          errorState.style.display = "block";
+          document.getElementById("errorMessage").textContent = error.message;
+        } finally {
+          loadingState.style.display = "none";
+        }
+      }
+
+      function createAnnotationCard(annotation) {
+        const card = document.createElement("div");
+        card.className = "annotation-card";
+
+        const date = new Date(annotation.created_at).toLocaleString();
+
+        card.innerHTML = `
+                <div class="annotation-header">
+                    <div>
+                        <div class="annotation-id">MongoDB ID: ${
+                          annotation._id
+                        }</div>
+                        <div class="annotation-id">Private ID: ${
+                          annotation.private_id || "N/A"
+                        }</div>
+                    </div>
+                    <div class="annotation-date">
+                        <i class="far fa-clock"></i> ${date}
+                    </div>
+                </div>
+
+                <div class="text-section">
+                    <div class="text-label">
+                        <i class="fas fa-file-alt"></i> Original Text
+                    </div>
+                    <div class="text-content">${escapeHtml(
+                      annotation.original_text
+                    )}</div>
+                </div>
+
+                <div class="text-section">
+                    <div class="text-label">
+                        <i class="fas fa-language"></i> Translated Text
+                    </div>
+                    <div class="text-content">${escapeHtml(
+                      annotation.translated_text
+                    )}</div>
+                </div>
+
+                <div class="text-section">
+                    <div class="text-label">
+                        <i class="fas fa-tags"></i> Annotations (${
+                          annotation.annotations.length
+                        })
+                    </div>
+                    <div class="annotations-list">
+                        ${annotation.annotations
+                          .map(
+                            (ann) => `
+                            <span class="annotation-span level-${ann.level}">
+                                [${ann.start}:${ann.end}] Level ${ann.level}
+                            </span>
+                        `
+                          )
+                          .join("")}
+                    </div>
+                </div>
+            `;
+
+        return card;
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      function nextPage() {
+        currentOffset += limit;
+        fetchAnnotations();
+        window.scrollTo(0, 0);
+      }
+
+      function previousPage() {
+        currentOffset = Math.max(0, currentOffset - limit);
+        fetchAnnotations();
+        window.scrollTo(0, 0);
+      }
+
+      // Load annotations on page load
+      document.addEventListener("DOMContentLoaded", () => {
+        fetchAnnotations();
+      });
+    </script>
+  </body>
+</html>
