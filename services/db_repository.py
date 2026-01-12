@@ -37,6 +37,9 @@ class MongoDBRepository:
             self._client.admin.command('ping')
             self._db = self._client[Config.MONGODB_DATABASE]
             self._collection = self._db[COLLECTION_NAME]
+            self._users_collection = self._db["users"]
+            # Create unique index on username field
+            self._users_collection.create_index("username", unique=True)
             logger.info(f"Successfully connected to MongoDB database: {Config.MONGODB_DATABASE}")
         except ConnectionFailure as e:
             logger.error(f"Failed to connect to MongoDB: {e}")
@@ -180,6 +183,81 @@ class MongoDBRepository:
         except Exception as e:
             logger.error(f"Failed to update annotation: {e}")
             raise
+
+    def create_user(self, username: str, password_hash: str, email: str = None):
+        """
+        Create a new user in the database.
+
+        Args:
+            username: Unique username
+            password_hash: Pre-hashed password from werkzeug.security
+            email: Optional email address
+
+        Returns:
+            dict: Dictionary containing 'id' (MongoDB document ID) and 'username'
+
+        Raises:
+            DuplicateKeyError: If username already exists
+        """
+        if self._users_collection is None:
+            raise RuntimeError("Database not initialized")
+
+        try:
+            document = {
+                "username": username,
+                "password_hash": password_hash,
+                "email": email,
+                "created_at": datetime.now(timezone.utc)
+            }
+
+            result = self._users_collection.insert_one(document)
+            logger.info(f"Created user with ID: {result.inserted_id}, username: {username}")
+            return {
+                "id": str(result.inserted_id),
+                "username": username
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to create user: {e}")
+            raise
+
+    def get_user_by_id(self, user_id: str):
+        """
+        Retrieve a user by MongoDB ObjectId.
+
+        Args:
+            user_id: MongoDB ObjectId as string
+
+        Returns:
+            dict: User document or None if not found
+        """
+        if self._users_collection is None:
+            raise RuntimeError("Database not initialized")
+
+        try:
+            return self._users_collection.find_one({"_id": ObjectId(user_id)})
+        except Exception as e:
+            logger.error(f"Failed to retrieve user by ID: {e}")
+            return None
+
+    def get_user_by_username(self, username: str):
+        """
+        Retrieve a user by username.
+
+        Args:
+            username: Username to search for
+
+        Returns:
+            dict: User document or None if not found
+        """
+        if self._users_collection is None:
+            raise RuntimeError("Database not initialized")
+
+        try:
+            return self._users_collection.find_one({"username": username})
+        except Exception as e:
+            logger.error(f"Failed to retrieve user by username: {e}")
+            return None
 
 
 def get_db_repository():

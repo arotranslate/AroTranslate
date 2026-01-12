@@ -1,16 +1,19 @@
 import logging
-from flask import Flask, jsonify, abort, request, render_template
+import os
+from flask import Flask, jsonify, abort, request, render_template, redirect, url_for, flash
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
 from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.security import check_password_hash, generate_password_hash
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 
 from config import Config
 from services.translation_service import (translate_text,
                                           convert_diacritics_from_orthography,
                                           )
 from services.db_repository import get_db_repository
-from models import Annotation
+from models import Annotation, User
 from utils.text_processing import get_language_code
 from utils.logger import configure_logging
 
@@ -25,6 +28,10 @@ except Exception as e:
     logger.warning("Application will continue without database functionality")
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(24).hex())
+if not os.getenv('SECRET_KEY'):
+    logger.warning("SECRET_KEY not set in environment. Using generated key (not suitable for production)")
+
 if Config.TALISMAN:
     logger.info("Using Talisman...")
     Talisman(app, force_https=True)
@@ -37,6 +44,58 @@ limiter = Limiter(get_remote_address,
                 default_limits=[Config.RATE_LIMIT],
                 storage_uri=Config.STORAGE_URI,
                 )
+
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in to access this page.'
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    """Required by Flask-Login to load user from session"""
+    return User.get(user_id)
+
+
+def initialize_default_admin():
+    """
+    Create default admin user if no users exist in the database.
+    This ensures there's always at least one admin account available.
+    """
+    try:
+        # Check if database is initialized
+        if not hasattr(db_repo, '_users_collection') or db_repo._users_collection is None:
+            logger.warning("Database not initialized, skipping default admin creation")
+            return
+
+        # Check if any users exist
+        user_count = db_repo._users_collection.count_documents({})
+
+        if user_count == 0:
+            # Get credentials from environment or use defaults
+            default_username = os.getenv('DEFAULT_ADMIN_USERNAME', 'admin')
+            default_password = os.getenv('DEFAULT_ADMIN_PASSWORD', 'pass')
+
+            # Create default admin user
+            password_hash = generate_password_hash(default_password, method='pbkdf2:sha256')
+            result = db_repo.create_user(
+                username=default_username,
+                password_hash=password_hash,
+                email=None
+            )
+
+            logger.info(f"✓ Default admin user created automatically: username='{default_username}'")
+            logger.warning(f"SECURITY: Default admin credentials are in use. Please change the password after first login!")
+        else:
+            logger.info(f"User database initialized with {user_count} user(s)")
+
+    except Exception as e:
+        logger.error(f"Failed to initialize default admin user: {e}")
+
+
+# Initialize default admin user on startup
+initialize_default_admin()
 
 
 @app.route("/")
@@ -71,8 +130,59 @@ def about():
 
 
 @app.route("/admin")
+@login_required
 def admin_dashboard():
     return render_template("admin_dashboard.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
+@limiter.limit("10 per minute")
+def login():
+    """Handle user login"""
+    # If already logged in, redirect to admin
+    if current_user.is_authenticated:
+        return redirect(url_for('admin_dashboard'))
+
+    if request.method == "POST":
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+
+        # Validate input
+        if not username or not password:
+            flash('Username and password are required.', 'error')
+            return render_template('login.html')
+
+        # Retrieve user from database
+        user_data = db_repo.get_user_by_username(username)
+
+        # Verify user exists and password is correct
+        if user_data and check_password_hash(user_data['password_hash'], password):
+            # Create User object and log in
+            user = User(
+                user_id=str(user_data['_id']),
+                username=user_data['username'],
+                email=user_data.get('email')
+            )
+            login_user(user)
+
+            # Redirect to originally requested page or admin
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('admin_dashboard'))
+        else:
+            # Invalid credentials
+            flash('Invalid username or password.', 'error')
+            logger.warning(f"Failed login attempt for username: {username}")
+
+    return render_template('login.html')
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    """Handle user logout"""
+    logout_user()
+    flash('You have been logged out successfully.', 'success')
+    return redirect(url_for('index'))
 
 
 @app.route("/translate", methods=["POST"])
