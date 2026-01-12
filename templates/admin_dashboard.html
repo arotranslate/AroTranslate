@@ -153,6 +153,90 @@
         display: flex;
         gap: 10px;
       }
+
+      .edit-textarea {
+        width: 100%;
+        min-height: 80px;
+        padding: 10px;
+        border: 1px solid #007bff;
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: inherit;
+        resize: vertical;
+      }
+
+      .edit-controls {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+        justify-content: flex-end;
+      }
+
+      .success-message {
+        background-color: #d4edda;
+        color: #155724;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        border: 1px solid #c3e6cb;
+      }
+
+      .btn-edit {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 5px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+      }
+
+      .btn-edit:hover {
+        background-color: #0056b3;
+      }
+
+      .btn-save {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 5px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .btn-save:hover {
+        background-color: #218838;
+      }
+
+      .btn-cancel {
+        background-color: #6c757d;
+        color: white;
+        border: none;
+        padding: 5px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .btn-cancel:hover {
+        background-color: #5a6268;
+      }
+
+      .annotation-highlight {
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-weight: 500;
+        cursor: help;
+      }
+
+      .annotation-highlight.level-1 {
+        background-color: #fff3cd;
+        border-bottom: 2px solid #ffc107;
+      }
+
+      .annotation-highlight.level-2 {
+        background-color: #f8d7da;
+        border-bottom: 2px solid #dc3545;
+      }
     </style>
   </head>
   <body>
@@ -161,9 +245,14 @@
         <span class="navbar-brand">
           <i class="fas fa-database"></i> Translation Annotations Dashboard
         </span>
-        <a href="/" class="btn btn-outline-light btn-sm">
-          <i class="fas fa-home"></i> Back to Translator
-        </a>
+        <div style="display: flex; gap: 10px;">
+          <button onclick="exportAllAnnotations()" class="btn btn-success btn-sm">
+            <i class="fas fa-download"></i> Export as JSON
+          </button>
+          <a href="/" class="btn btn-outline-light btn-sm">
+            <i class="fas fa-home"></i> Back to Translator
+          </a>
+        </div>
       </div>
     </nav>
 
@@ -254,6 +343,9 @@
       function createAnnotationCard(annotation) {
         const card = document.createElement("div");
         card.className = "annotation-card";
+        card.dataset.id = annotation._id;
+        card.dataset.privateId = annotation.private_id || "";
+        card.dataset.annotations = JSON.stringify(annotation.annotations);
 
         const date = new Date(annotation.created_at).toLocaleString();
 
@@ -267,27 +359,52 @@
                           annotation.private_id || "N/A"
                         }</div>
                     </div>
-                    <div class="annotation-date">
-                        <i class="far fa-clock"></i> ${date}
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div class="annotation-date">
+                            <i class="far fa-clock"></i> ${date}
+                        </div>
+                        <button class="btn-edit" onclick="enterEditMode('${annotation._id}')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
                     </div>
+                </div>
+
+                <div class="success-message" id="success-${annotation._id}" style="display: none;">
+                    Changes saved successfully!
                 </div>
 
                 <div class="text-section">
                     <div class="text-label">
                         <i class="fas fa-file-alt"></i> Original Text
                     </div>
-                    <div class="text-content">${escapeHtml(
+                    <div class="text-content" id="original-view-${annotation._id}">${escapeHtml(
                       annotation.original_text
                     )}</div>
+                    <textarea class="edit-textarea" id="original-edit-${annotation._id}" style="display: none;">${escapeHtml(
+                      annotation.original_text
+                    )}</textarea>
                 </div>
 
                 <div class="text-section">
                     <div class="text-label">
                         <i class="fas fa-language"></i> Translated Text
                     </div>
-                    <div class="text-content">${escapeHtml(
-                      annotation.translated_text
+                    <div class="text-content" id="translated-view-${annotation._id}">${highlightAnnotations(
+                      annotation.translated_text,
+                      annotation.annotations
                     )}</div>
+                    <textarea class="edit-textarea" id="translated-edit-${annotation._id}" style="display: none;">${escapeHtml(
+                      annotation.translated_text
+                    )}</textarea>
+                </div>
+
+                <div class="edit-controls" id="edit-controls-${annotation._id}" style="display: none;">
+                    <button class="btn-cancel" onclick="cancelEdit('${annotation._id}')">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button class="btn-save" onclick="saveEdit('${annotation._id}')">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
                 </div>
 
                 <div class="text-section">
@@ -319,6 +436,40 @@
         return div.innerHTML;
       }
 
+      function highlightAnnotations(text, annotations) {
+        if (!annotations || annotations.length === 0) {
+          return escapeHtml(text);
+        }
+
+        // Sort annotations by start position
+        const sortedAnnotations = [...annotations].sort((a, b) => a.start - b.start);
+
+        // Build highlighted HTML
+        let result = '';
+        let currentPos = 0;
+
+        for (const ann of sortedAnnotations) {
+          // Add text before annotation
+          if (ann.start > currentPos) {
+            result += escapeHtml(text.substring(currentPos, ann.start));
+          }
+
+          // Add highlighted annotation
+          const annotatedText = text.substring(ann.start, ann.end);
+          const levelClass = ann.level === 1 ? 'level-1' : 'level-2';
+          result += `<span class="annotation-highlight ${levelClass}" title="Level ${ann.level} error: position ${ann.start}-${ann.end}">${escapeHtml(annotatedText)}</span>`;
+
+          currentPos = ann.end;
+        }
+
+        // Add remaining text
+        if (currentPos < text.length) {
+          result += escapeHtml(text.substring(currentPos));
+        }
+
+        return result;
+      }
+
       function nextPage() {
         currentOffset += limit;
         fetchAnnotations();
@@ -329,6 +480,155 @@
         currentOffset = Math.max(0, currentOffset - limit);
         fetchAnnotations();
         window.scrollTo(0, 0);
+      }
+
+      function enterEditMode(annotationId) {
+        // Hide view mode elements
+        document.getElementById(`original-view-${annotationId}`).style.display = "none";
+        document.getElementById(`translated-view-${annotationId}`).style.display = "none";
+
+        // Show edit mode elements
+        document.getElementById(`original-edit-${annotationId}`).style.display = "block";
+        document.getElementById(`translated-edit-${annotationId}`).style.display = "block";
+        document.getElementById(`edit-controls-${annotationId}`).style.display = "flex";
+
+        // Hide edit button
+        const card = document.querySelector(`[data-id="${annotationId}"]`);
+        const editButton = card.querySelector(".btn-edit");
+        editButton.style.display = "none";
+
+        // Hide success message
+        const successMessage = document.getElementById(`success-${annotationId}`);
+        if (successMessage) {
+          successMessage.style.display = "none";
+        }
+      }
+
+      function cancelEdit(annotationId) {
+        // Show view mode elements
+        document.getElementById(`original-view-${annotationId}`).style.display = "block";
+        document.getElementById(`translated-view-${annotationId}`).style.display = "block";
+
+        // Hide edit mode elements
+        document.getElementById(`original-edit-${annotationId}`).style.display = "none";
+        document.getElementById(`translated-edit-${annotationId}`).style.display = "none";
+        document.getElementById(`edit-controls-${annotationId}`).style.display = "none";
+
+        // Show edit button
+        const card = document.querySelector(`[data-id="${annotationId}"]`);
+        const editButton = card.querySelector(".btn-edit");
+        editButton.style.display = "inline-block";
+      }
+
+      async function saveEdit(annotationId) {
+        const card = document.querySelector(`[data-id="${annotationId}"]`);
+        const privateId = card.dataset.privateId;
+
+        const originalText = document.getElementById(`original-edit-${annotationId}`).value;
+        const translatedText = document.getElementById(`translated-edit-${annotationId}`).value;
+
+        if (!originalText.trim() || !translatedText.trim()) {
+          alert("Original text and translated text cannot be empty.");
+          return;
+        }
+
+        const requestData = {
+          private_id: privateId,
+          original_text: originalText,
+          translated_text: translatedText
+        };
+
+        try {
+          const response = await fetch(`/annotations/${annotationId}`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(requestData)
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.description || `HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          // Get the annotations array from the card
+          const annotations = JSON.parse(card.dataset.annotations);
+
+          // Update the view divs with new values (with highlighting for translated)
+          document.getElementById(`original-view-${annotationId}`).textContent = originalText;
+          document.getElementById(`translated-view-${annotationId}`).innerHTML = highlightAnnotations(translatedText, annotations);
+
+          // Exit edit mode
+          cancelEdit(annotationId);
+
+          // Show success message
+          const successMessage = document.getElementById(`success-${annotationId}`);
+          successMessage.style.display = "block";
+
+          // Hide success message after 3 seconds
+          setTimeout(() => {
+            successMessage.style.display = "none";
+          }, 3000);
+
+        } catch (error) {
+          console.error("Error saving annotation:", error);
+          alert(`Failed to save changes: ${error.message}`);
+        }
+      }
+
+      async function exportAllAnnotations() {
+        const exportButton = document.querySelector('button[onclick="exportAllAnnotations()"]');
+        const originalText = exportButton.innerHTML;
+
+        try {
+          // Show loading state
+          exportButton.disabled = true;
+          exportButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exporting...';
+
+          // Fetch all annotations (using a high limit)
+          const response = await fetch('/annotations?limit=1000&offset=0');
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          // Create JSON blob
+          const jsonString = JSON.stringify(data.annotations, null, 2);
+          const blob = new Blob([jsonString], { type: 'application/json' });
+
+          // Create download link
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+
+          // Generate filename with timestamp
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+          a.download = `annotations_export_${timestamp}.json`;
+
+          // Trigger download
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+
+          // Show success message temporarily
+          exportButton.innerHTML = '<i class="fas fa-check"></i> Exported!';
+          setTimeout(() => {
+            exportButton.innerHTML = originalText;
+            exportButton.disabled = false;
+          }, 2000);
+
+        } catch (error) {
+          console.error('Error exporting annotations:', error);
+          alert(`Failed to export annotations: ${error.message}`);
+          exportButton.innerHTML = originalText;
+          exportButton.disabled = false;
+        }
       }
 
       // Load annotations on page load
