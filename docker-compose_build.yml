@@ -15,6 +15,9 @@ services:
       - MEMCACHED_URI=memcached://memcached:11211
       - MONGODB_URI=mongodb://mongodb:27017/
       - MONGODB_DATABASE=arotranslate
+      - DEFAULT_ADMIN_USERNAME=${DEFAULT_ADMIN_USERNAME}
+      - DEFAULT_ADMIN_PASSWORD=${DEFAULT_ADMIN_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
     ports:
       - "5003:5000"
     volumes:

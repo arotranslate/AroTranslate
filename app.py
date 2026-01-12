@@ -28,9 +28,10 @@ except Exception as e:
     logger.warning("Application will continue without database functionality")
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(24).hex())
-if not os.getenv('SECRET_KEY'):
-    logger.warning("SECRET_KEY not set in environment. Using generated key (not suitable for production)")
+if not Config.SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable must be set")
+
+app.config['SECRET_KEY'] = Config.SECRET_KEY
 
 if Config.TALISMAN:
     logger.info("Using Talisman...")
@@ -45,7 +46,6 @@ limiter = Limiter(get_remote_address,
                 storage_uri=Config.STORAGE_URI,
                 )
 
-# Initialize Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -54,32 +54,25 @@ login_manager.login_message = 'Please log in to access this page.'
 
 @login_manager.user_loader
 def load_user(user_id):
-    """Required by Flask-Login to load user from session"""
-    return User.get(user_id)
-
+    return db_repo.get_user_by_id(user_id)
 
 def initialize_default_admin():
-    """
-    Create default admin user if no users exist in the database.
-    This ensures there's always at least one admin account available.
-    """
     try:
-        # Check if database is initialized
         if not hasattr(db_repo, '_users_collection') or db_repo._users_collection is None:
             logger.warning("Database not initialized, skipping default admin creation")
             return
 
-        # Check if any users exist
         user_count = db_repo._users_collection.count_documents({})
 
         if user_count == 0:
-            # Get credentials from environment or use defaults
-            default_username = os.getenv('DEFAULT_ADMIN_USERNAME', 'admin')
-            default_password = os.getenv('DEFAULT_ADMIN_PASSWORD', 'pass')
+            default_username = Config.DEFAULT_ADMIN_USERNAME
+            default_password = Config.DEFAULT_ADMIN_PASSWORD
 
-            # Create default admin user
+            if default_username is None or default_password is None:
+                raise ValueError("Default username and password must be set in environment variables")
+
             password_hash = generate_password_hash(default_password, method='pbkdf2:sha256')
-            result = db_repo.create_user(
+            db_repo.create_user(
                 username=default_username,
                 password_hash=password_hash,
                 email=None
@@ -93,10 +86,7 @@ def initialize_default_admin():
     except Exception as e:
         logger.error(f"Failed to initialize default admin user: {e}")
 
-
-# Initialize default admin user on startup
 initialize_default_admin()
-
 
 @app.route("/")
 def index():
@@ -138,8 +128,6 @@ def admin_dashboard():
 @app.route("/login", methods=["GET", "POST"])
 @limiter.limit("10 per minute")
 def login():
-    """Handle user login"""
-    # If already logged in, redirect to admin
     if current_user.is_authenticated:
         return redirect(url_for('admin_dashboard'))
 
@@ -147,29 +135,23 @@ def login():
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
 
-        # Validate input
         if not username or not password:
             flash('Username and password are required.', 'error')
             return render_template('login.html')
 
-        # Retrieve user from database
         user_data = db_repo.get_user_by_username(username)
 
-        # Verify user exists and password is correct
         if user_data and check_password_hash(user_data['password_hash'], password):
-            # Create User object and log in
             user = User(
                 user_id=str(user_data['_id']),
                 username=user_data['username'],
-                email=user_data.get('email')
             )
+
             login_user(user)
 
-            # Redirect to originally requested page or admin
             next_page = request.args.get('next')
             return redirect(next_page) if next_page else redirect(url_for('admin_dashboard'))
         else:
-            # Invalid credentials
             flash('Invalid username or password.', 'error')
             logger.warning(f"Failed login attempt for username: {username}")
 
@@ -179,10 +161,10 @@ def login():
 @app.route("/logout")
 @login_required
 def logout():
-    """Handle user logout"""
     logout_user()
     flash('You have been logged out successfully.', 'success')
-    return redirect(url_for('index'))
+
+    return redirect(url_for('login'))
 
 
 @app.route("/translate", methods=["POST"])

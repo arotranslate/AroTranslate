@@ -14,3 +14,6 @@ class Config:
     TALISMAN = bool(os.getenv("TALISMAN", "False") == "True")
     MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://mongodb:27017/")
     MONGODB_DATABASE = os.getenv("MONGODB_DATABASE", "arotranslate")
+    DEFAULT_ADMIN_USERNAME = os.getenv("DEFAULT_ADMIN_USERNAME")
+    DEFAULT_ADMIN_PASSWORD = os.getenv("DEFAULT_ADMIN_PASSWORD")
+    SECRET_KEY = os.getenv("SECRET_KEY")

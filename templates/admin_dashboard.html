@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Dashboard - Translation Annotations</title>
+    <title>AroTranslate Admin</title>
     <link
       href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
       rel="stylesheet"
@@ -243,13 +243,19 @@
     <nav class="navbar">
       <div class="container-fluid">
         <span class="navbar-brand">
-          <i class="fas fa-database"></i> Translation Annotations Dashboard
+          <i class="fas fa-database"></i> AroTranslate Admin
         </span>
-        <div style="display: flex; gap: 10px;">
-          <button onclick="exportAllAnnotations()" class="btn btn-success btn-sm">
+        <div style="display: flex; gap: 10px">
+          <button
+            onclick="exportAllAnnotations()"
+            class="btn btn-success btn-sm"
+          >
             <i class="fas fa-download"></i> Export as JSON
           </button>
-          <a href="{{ url_for('logout') }}" class="btn btn-outline-light btn-sm">
+          <a
+            href="{{ url_for('logout') }}"
+            class="btn btn-outline-light btn-sm"
+          >
             <i class="fas fa-sign-out-alt"></i> Logout
           </a>
           <a href="/" class="btn btn-outline-light btn-sm">
@@ -366,13 +372,17 @@
                         <div class="annotation-date">
                             <i class="far fa-clock"></i> ${date}
                         </div>
-                        <button class="btn-edit" onclick="enterEditMode('${annotation._id}')">
+                        <button class="btn-edit" onclick="enterEditMode('${
+                          annotation._id
+                        }')">
                             <i class="fas fa-edit"></i> Edit
                         </button>
                     </div>
                 </div>
 
-                <div class="success-message" id="success-${annotation._id}" style="display: none;">
+                <div class="success-message" id="success-${
+                  annotation._id
+                }" style="display: none;">
                     Changes saved successfully!
                 </div>
 
@@ -380,32 +390,44 @@
                     <div class="text-label">
                         <i class="fas fa-file-alt"></i> Original Text
                     </div>
-                    <div class="text-content" id="original-view-${annotation._id}">${escapeHtml(
-                      annotation.original_text
-                    )}</div>
-                    <textarea class="edit-textarea" id="original-edit-${annotation._id}" style="display: none;">${escapeHtml(
-                      annotation.original_text
-                    )}</textarea>
+                    <div class="text-content" id="original-view-${
+                      annotation._id
+                    }">${escapeHtml(annotation.original_text)}</div>
+                    <textarea class="edit-textarea" id="original-edit-${
+                      annotation._id
+                    }" style="display: none;">${escapeHtml(
+          annotation.original_text
+        )}</textarea>
                 </div>
 
                 <div class="text-section">
                     <div class="text-label">
                         <i class="fas fa-language"></i> Translated Text
                     </div>
-                    <div class="text-content" id="translated-view-${annotation._id}">${highlightAnnotations(
-                      annotation.translated_text,
-                      annotation.annotations
-                    )}</div>
-                    <textarea class="edit-textarea" id="translated-edit-${annotation._id}" style="display: none;">${escapeHtml(
-                      annotation.translated_text
-                    )}</textarea>
+                    <div class="text-content" id="translated-view-${
+                      annotation._id
+                    }">${highlightAnnotations(
+          annotation.translated_text,
+          annotation.annotations
+        )}</div>
+                    <textarea class="edit-textarea" id="translated-edit-${
+                      annotation._id
+                    }" style="display: none;">${escapeHtml(
+          annotation.translated_text
+        )}</textarea>
                 </div>
 
-                <div class="edit-controls" id="edit-controls-${annotation._id}" style="display: none;">
-                    <button class="btn-cancel" onclick="cancelEdit('${annotation._id}')">
+                <div class="edit-controls" id="edit-controls-${
+                  annotation._id
+                }" style="display: none;">
+                    <button class="btn-cancel" onclick="cancelEdit('${
+                      annotation._id
+                    }')">
                         <i class="fas fa-times"></i> Cancel
                     </button>
-                    <button class="btn-save" onclick="saveEdit('${annotation._id}')">
+                    <button class="btn-save" onclick="saveEdit('${
+                      annotation._id
+                    }')">
                         <i class="fas fa-save"></i> Save Changes
                     </button>
                 </div>
@@ -445,10 +467,12 @@
         }
 
         // Sort annotations by start position
-        const sortedAnnotations = [...annotations].sort((a, b) => a.start - b.start);
+        const sortedAnnotations = [...annotations].sort(
+          (a, b) => a.start - b.start
+        );
 
         // Build highlighted HTML
-        let result = '';
+        let result = "";
         let currentPos = 0;
 
         for (const ann of sortedAnnotations) {
@@ -459,8 +483,12 @@
 
           // Add highlighted annotation
           const annotatedText = text.substring(ann.start, ann.end);
-          const levelClass = ann.level === 1 ? 'level-1' : 'level-2';
-          result += `<span class="annotation-highlight ${levelClass}" title="Level ${ann.level} error: position ${ann.start}-${ann.end}">${escapeHtml(annotatedText)}</span>`;
+          const levelClass = ann.level === 1 ? "level-1" : "level-2";
+          result += `<span class="annotation-highlight ${levelClass}" title="Level ${
+            ann.level
+          } error: position ${ann.start}-${ann.end}">${escapeHtml(
+            annotatedText
+          )}</span>`;
 
           currentPos = ann.end;
         }
@@ -487,13 +515,20 @@
 
       function enterEditMode(annotationId) {
         // Hide view mode elements
-        document.getElementById(`original-view-${annotationId}`).style.display = "none";
-        document.getElementById(`translated-view-${annotationId}`).style.display = "none";
+        document.getElementById(`original-view-${annotationId}`).style.display =
+          "none";
+        document.getElementById(
+          `translated-view-${annotationId}`
+        ).style.display = "none";
 
         // Show edit mode elements
-        document.getElementById(`original-edit-${annotationId}`).style.display = "block";
-        document.getElementById(`translated-edit-${annotationId}`).style.display = "block";
-        document.getElementById(`edit-controls-${annotationId}`).style.display = "flex";
+        document.getElementById(`original-edit-${annotationId}`).style.display =
+          "block";
+        document.getElementById(
+          `translated-edit-${annotationId}`
+        ).style.display = "block";
+        document.getElementById(`edit-controls-${annotationId}`).style.display =
+          "flex";
 
         // Hide edit button
         const card = document.querySelector(`[data-id="${annotationId}"]`);
@@ -501,7 +536,9 @@
         editButton.style.display = "none";
 
         // Hide success message
-        const successMessage = document.getElementById(`success-${annotationId}`);
+        const successMessage = document.getElementById(
+          `success-${annotationId}`
+        );
         if (successMessage) {
           successMessage.style.display = "none";
         }
@@ -509,13 +546,20 @@
 
       function cancelEdit(annotationId) {
         // Show view mode elements
-        document.getElementById(`original-view-${annotationId}`).style.display = "block";
-        document.getElementById(`translated-view-${annotationId}`).style.display = "block";
+        document.getElementById(`original-view-${annotationId}`).style.display =
+          "block";
+        document.getElementById(
+          `translated-view-${annotationId}`
+        ).style.display = "block";
 
         // Hide edit mode elements
-        document.getElementById(`original-edit-${annotationId}`).style.display = "none";
-        document.getElementById(`translated-edit-${annotationId}`).style.display = "none";
-        document.getElementById(`edit-controls-${annotationId}`).style.display = "none";
+        document.getElementById(`original-edit-${annotationId}`).style.display =
+          "none";
+        document.getElementById(
+          `translated-edit-${annotationId}`
+        ).style.display = "none";
+        document.getElementById(`edit-controls-${annotationId}`).style.display =
+          "none";
 
         // Show edit button
         const card = document.querySelector(`[data-id="${annotationId}"]`);
@@ -527,8 +571,12 @@
         const card = document.querySelector(`[data-id="${annotationId}"]`);
         const privateId = card.dataset.privateId;
 
-        const originalText = document.getElementById(`original-edit-${annotationId}`).value;
-        const translatedText = document.getElementById(`translated-edit-${annotationId}`).value;
+        const originalText = document.getElementById(
+          `original-edit-${annotationId}`
+        ).value;
+        const translatedText = document.getElementById(
+          `translated-edit-${annotationId}`
+        ).value;
 
         if (!originalText.trim() || !translatedText.trim()) {
           alert("Original text and translated text cannot be empty.");
@@ -538,21 +586,23 @@
         const requestData = {
           private_id: privateId,
           original_text: originalText,
-          translated_text: translatedText
+          translated_text: translatedText,
         };
 
         try {
           const response = await fetch(`/annotations/${annotationId}`, {
             method: "PATCH",
             headers: {
-              "Content-Type": "application/json"
+              "Content-Type": "application/json",
             },
-            body: JSON.stringify(requestData)
+            body: JSON.stringify(requestData),
           });
 
           if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.description || `HTTP error! status: ${response.status}`);
+            throw new Error(
+              errorData.description || `HTTP error! status: ${response.status}`
+            );
           }
 
           const data = await response.json();
@@ -561,21 +611,24 @@
           const annotations = JSON.parse(card.dataset.annotations);
 
           // Update the view divs with new values (with highlighting for translated)
-          document.getElementById(`original-view-${annotationId}`).textContent = originalText;
-          document.getElementById(`translated-view-${annotationId}`).innerHTML = highlightAnnotations(translatedText, annotations);
+          document.getElementById(`original-view-${annotationId}`).textContent =
+            originalText;
+          document.getElementById(`translated-view-${annotationId}`).innerHTML =
+            highlightAnnotations(translatedText, annotations);
 
           // Exit edit mode
           cancelEdit(annotationId);
 
           // Show success message
-          const successMessage = document.getElementById(`success-${annotationId}`);
+          const successMessage = document.getElementById(
+            `success-${annotationId}`
+          );
           successMessage.style.display = "block";
 
           // Hide success message after 3 seconds
           setTimeout(() => {
             successMessage.style.display = "none";
           }, 3000);
-
         } catch (error) {
           console.error("Error saving annotation:", error);
           alert(`Failed to save changes: ${error.message}`);
@@ -583,16 +636,19 @@
       }
 
       async function exportAllAnnotations() {
-        const exportButton = document.querySelector('button[onclick="exportAllAnnotations()"]');
+        const exportButton = document.querySelector(
+          'button[onclick="exportAllAnnotations()"]'
+        );
         const originalText = exportButton.innerHTML;
 
         try {
           // Show loading state
           exportButton.disabled = true;
-          exportButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exporting...';
+          exportButton.innerHTML =
+            '<i class="fas fa-spinner fa-spin"></i> Exporting...';
 
           // Fetch all annotations (using a high limit)
-          const response = await fetch('/annotations?limit=1000&offset=0');
+          const response = await fetch("/annotations?limit=1000&offset=0");
 
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -602,15 +658,18 @@
 
           // Create JSON blob
           const jsonString = JSON.stringify(data.annotations, null, 2);
-          const blob = new Blob([jsonString], { type: 'application/json' });
+          const blob = new Blob([jsonString], { type: "application/json" });
 
           // Create download link
           const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
+          const a = document.createElement("a");
           a.href = url;
 
           // Generate filename with timestamp
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+          const timestamp = new Date()
+            .toISOString()
+            .replace(/[:.]/g, "-")
+            .slice(0, -5);
           a.download = `annotations_export_${timestamp}.json`;
 
           // Trigger download
@@ -625,9 +684,8 @@
             exportButton.innerHTML = originalText;
             exportButton.disabled = false;
           }, 2000);
-
         } catch (error) {
-          console.error('Error exporting annotations:', error);
+          console.error("Error exporting annotations:", error);
           alert(`Failed to export annotations: ${error.message}`);
           exportButton.innerHTML = originalText;
           exportButton.disabled = false;
