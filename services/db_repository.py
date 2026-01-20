@@ -58,7 +58,7 @@ class MongoDBRepository:
     def client(self):
         return self._client
 
-    def insert_annotation(self, original_text: str, translated_text: str, annotations: List[Annotation]):
+    def insert_annotation(self, original_text: str, translated_text: str, annotations: List[Annotation], stars: int, feedback: str):
         try:
             private_id = str(uuid.uuid4())
             document = {
@@ -66,6 +66,8 @@ class MongoDBRepository:
                 "original_text": original_text,
                 "translated_text": translated_text,
                 "annotations": [ann.to_dict() for ann in annotations],
+                "stars": stars,
+                "feedback": feedback,
                 "created_at": datetime.now(timezone.utc)
             }
 
@@ -101,7 +103,8 @@ class MongoDBRepository:
 
     def update_annotation(self, document_id: str, private_id: str,
                          original_text: str = None, translated_text: str = None,
-                         annotations: List[Annotation] = None):
+                         annotations: List[Annotation] = None,
+                         stars: int = None, feedback: str = None):
         try:
             update_fields = {}
             if original_text is not None:
@@ -110,6 +113,10 @@ class MongoDBRepository:
                 update_fields["translated_text"] = translated_text
             if annotations is not None:
                 update_fields["annotations"] = [ann.to_dict() for ann in annotations]
+            if stars is not None:
+                update_fields["stars"] = stars
+            if feedback is not None:
+                update_fields["feedback"] = feedback
 
             if not update_fields:
                 logger.warning("No fields provided for update")

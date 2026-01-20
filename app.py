@@ -284,6 +284,8 @@ def update_annotation(annotation_id):
     original_text = data.get("original_text")
     translated_text = data.get("translated_text")
     annotations_data = data.get("annotations")
+    stars = data.get("stars", [])
+    feedback = data.get("feedback", [])
 
     annotations = None
     if annotations_data is not None:
@@ -312,7 +314,9 @@ def update_annotation(annotation_id):
             private_id=private_id,
             original_text=original_text,
             translated_text=translated_text,
-            annotations=annotations
+            annotations=annotations,
+            stars=stars,
+            feedback=feedback
         )
 
         if not result["matched"]:
@@ -344,6 +348,8 @@ def create_annotation():
     original_text = data.get("original_text", "").strip()
     translated_text = data.get("translated_text", "").strip()
     annotations_data = data.get("annotations", [])
+    stars = data.get("stars", [])
+    feedback = data.get("feedback", [])
 
     if not original_text or not translated_text:
         abort(400, description="Missing original_text or translated_text")
@@ -371,7 +377,9 @@ def create_annotation():
         result = db_repo.insert_annotation(
             original_text=original_text,
             translated_text=translated_text,
-            annotations=annotations
+            annotations=annotations,
+            stars=stars,
+            feedback=feedback
         )
         return jsonify({
             "id": result["id"],

@@ -13,3 +13,4 @@ pandas
 gunicorn
 gevent
 pymongo
+torch

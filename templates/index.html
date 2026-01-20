@@ -152,6 +152,120 @@
         #diacritics {
             display: none; /* Initially hide the element */
         } 
+
+        .output-div {
+            min-height: calc(1.5em * 8 + 1rem);
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            resize: none;
+        }
+
+        .output-div:empty::before {
+            content: attr(data-placeholder);
+            color: #6c757d;
+        }
+
+        .error-right-click-menu {
+            display: none;
+            z-index: 1000;
+            position: absolute;
+            overflow: hidden;
+            border: 1px solid #CCC;
+            white-space: nowrap;
+            font-family: sans-serif;
+            background: #FFF;
+            color: #333;
+            border-radius: 5px;
+            margin: 0px;
+            padding-left: 0;
+        }
+
+        .error-right-click-menu li {
+            padding: 4px 8px;
+            cursor: pointer;
+            list-style-type: none;
+            color: whitesmoke;
+        }
+
+        .error-right-click-menu li:hover {
+            background-color: #DEF;
+        }
+
+        #error-level-1{
+            background-color: #007bff;
+        }
+
+        #error-level-2{
+            background-color: #a13927;
+        }
+
+        #clear-error{
+            color: black;
+        }
+
+        .highlight-error-level-1{
+            background-color: #007bff;
+        }
+
+        .highlight-error-level-2{
+            background-color: #a13927;
+        }
+
+        #outputText{
+            background-color: #e9ecef;
+        }
+
+        .rate {
+            float: left;
+            height: 46px;
+            padding: 0 10px;
+            display: flex;
+            flex-direction: row-reverse;
+        }
+        .rate:not(:checked) > input {
+            position:absolute;
+            top:-9999px;
+        }
+        .rate:not(:checked) > label {
+            float:right;
+            width:1em;
+            overflow:hidden;
+            white-space:nowrap;
+            cursor:pointer;
+            font-size:30px;
+            color:#ccc;
+        }
+        .rate:not(:checked) > label:before {
+            content: '★ ';
+        }
+        .rate > input:checked ~ label {
+            color: #ffc700;    
+        }
+        .rate:not(:checked) > label:hover,
+        .rate:not(:checked) > label:hover ~ label {
+            color: #deb217;  
+        }
+        .rate > input:checked + label:hover,
+        .rate > input:checked + label:hover ~ label,
+        .rate > input:checked ~ label:hover,
+        .rate > input:checked ~ label:hover ~ label,
+        .rate > label:hover ~ input:checked ~ label {
+            color: #c59b08;
+        }
+        .midpoint-centered-div{
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #submitFeedback{
+            width: 100%;
+            height: 3em;
+        }
+        .hidden-urls{
+            display: none;
+        }
     </style>
 </head>
 <body style="padding-left: 15px; padding-right: 15px;">
@@ -231,7 +345,9 @@
                     </div>
                     <div class="form-group textarea-container">
                         <label for="outputText" class="sr-only">Output Text</label>
-                        <textarea id="outputText" class="form-control" rows="8" placeholder="Translation will appear here" readonly></textarea>
+                        <!-- <textarea id="outputText" class="form-control" rows="8" readonly></textarea> -->
+                        <div id="outputText" contenteditable="True" role="textbox" aria-multiline="true" class="form-control output-div" data-placeholder="Translation will appear here" onbeforeinput="return false"></div>
+                        
                         <button id="copyOutputText" class="copy-button" title="Copy">
                             <i class="fas fa-copy" aria-hidden="true"></i>
                             <span class="sr-only">Copy output text</span>
@@ -242,6 +358,52 @@
                         </button>
                     </div>
                     <p class="vintage-text text-right" id="translate_time"></p>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    <div class="form-group textarea-container">
+                        <label for="feedback" class="sr-only">Feedback</label>
+                        <textarea id="feedback" class="form-control" rows="3" placeholder="Your feedback is welcome!"></textarea>
+                    </div>
+                </div>
+
+                <div class="col-md-4 d-flex align-items-center midpoint-centered-div">
+                    <div style="margin-right: 10px;">Rate your experience:</div>
+                    <div id="stars" class="rate">
+                        <input type="radio" id="star5" name="rate" value="5" />
+                        <label for="star5" title="5 stars"></label>
+                        <input type="radio" id="star4" name="rate" value="4" />
+                        <label for="star4" title="4 stars"></label>
+                        <input type="radio" id="star3" name="rate" value="3" />
+                        <label for="star3" title="3 stars"></label>
+                        <input type="radio" id="star2" name="rate" value="2" />
+                        <label for="star2" title="2 stars"></label>
+                        <input type="radio" id="star1" name="rate" value="1" />
+                        <label for="star1" title="1 star"></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <button id="submitFeedback" class="btn btn-success btn-sm">Submit Feedback</button>
+                </div>
+            </div>
+
+            <div class="row hidden-urls">
+                <div class="col-md-6 mb-3">
+                    <div class="form-group">
+                        <label for="public-url">Public URL:</label>
+                        <input type="text" id="public-url" class="form-control" readonly>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="form-group">
+                        <label for="private-url">Private URL:</label>
+                        <input type="text" id="private-url" class="form-control" readonly>
+                    </div>
                 </div>
             </div>
         </section>
@@ -263,6 +425,12 @@
             Made with <span style="color: red;" aria-hidden="true">&#10084;</span><span class="sr-only">love</span>
         </p>
     </footer> 
+
+    <ul class='error-right-click-menu'>
+        <li data-action = "error-1" id="error-level-1">Error Level 1</li>
+        <li data-action = "error-2" id="error-level-2">Error Level 2</li>
+        <li data-action = "error-none" id="clear-error">Clear Error</li>
+    </ul>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
@@ -291,7 +459,18 @@
                     "p1": "AroTranslate este primul sistem cuprinzător de traducere pentru aromână, o limbă romanică unică și pe cale de dispariție, vorbită în zona Balcanilor. Citește mai mult la",
                     "p2": "Puteți traduce între oricare două dintre aromână, română și engleză în orice direcție. Limita de cuvinte este de aproximativ 1000 de cuvinte, dar aceasta depinde de constituția textului. De asemenea, vă recomandăm să folosiți semnele diacritice în input pentru cea mai bună calitate a traducerii.",
                     "p3": "Toate traducerile cu limba aromână ca limbă țintă sunt realizate implicit cu ortografia propusă de Tiberius Cunia ã/dz/lj/nj/sh/ts. Puteți ajusta ortografia pentru a folosi DIARO, standardizarea motivată lingvistic propusă de Matilda Caragiu Marioțeanu în Dicționarul ei aromân (macedo-vlah): ăâ/ḑ/ľ/ń/ș/ț. Dacă aromâna este selectată ca limbă sursă, recomandăm totuși utilizarea diacriticelor (Cunia sau DIARO, deoarece le convertim în ceva comun). În cele din urmă, traducerile sunt în general mai bune atunci când limba aromână este limba sursă, mai degrabă decât limba țintă.",
-                    "disclaimer": "Disclaimer: aromâna este o limbă cu resurse foarte reduse și nu este standardizată, având multe varietăți. Datorită acestui fapt, calitatea traducerii este experimentală și, de multe ori, este mai mică decât ați putea, cu excepția unui sistem de traducere pentru limbi cu resurse medii spre mari. Pot apărea erori de traducere, în cazul în care anumite informații sunt ratate sau modificate. Cuvintele generate de model ar putea să nu fie nici măcar cuvinte aromâne reale. Vă rugăm să utilizați servicii profesionale de traducere umană pentru probleme sensibile care necesită o precizie ridicată."
+                    "disclaimer": "Disclaimer: aromâna este o limbă cu resurse foarte reduse și nu este standardizată, având multe varietăți. Datorită acestui fapt, calitatea traducerii este experimentală și, de multe ori, este mai mică decât ați putea, cu excepția unui sistem de traducere pentru limbi cu resurse medii spre mari. Pot apărea erori de traducere, în cazul în care anumite informații sunt ratate sau modificate. Cuvintele generate de model ar putea să nu fie nici măcar cuvinte aromâne reale. Vă rugăm să utilizați servicii profesionale de traducere umană pentru probleme sensibile care necesită o precizie ridicată.",
+                    "error-level-1": "Eroare De Nivel 1",
+                    "error-level-2": "Eroare De Nivel 2",
+                    "clear-error": "Șterge Eroarea",
+                    "feedback": "Comentariile tale sunt binevenite!",
+                    'star1': '1 stea',
+                    'star2': '2 stele',
+                    'star3': '3 stele',
+                    'star4': '4 stele',
+                    'star5': '5 stele',
+                    "public-url": "URL Public",
+                    "private-url": "URL Privat",
                 },
                 "rup": {  
                     "translate-button": "Apridutse",
@@ -313,7 +492,18 @@
                     "p2": "Pots s-apridutsets anamisa di itsi dauã ditu armãnã, romãnã shi englezã tru itsi directsie. Limitã di zboarã easti di aproapea 1000 di zboarã, ama aestã tsãni di constitutsiunea a textului. Tutunãoarã, recomandãm ufilisearea a diacritilor tru intrãturã trã nai ma bunã calitate di tradutsire.",
                     "p1": "AroTranslate easti protlu sistem di traditsii cuprinzãtoare trã armãnã, limbã romãnã unicã zburãtã tu Balcani. Vedz la",
                     "p3": "Tuti traditsiile cu limba armãnã ca limbã di tsintã suntu adrati prit protocolu cu orthografia pripusã di Tiberius Cunia -dz/lj/nj/sh/ts. Putets s-ndridzets ortografia tra s-ufilisits DIARO, standardizarea motivatã lingvistic pripusã di Matilda Caragiu Mariotseanu tru Dictsionarlu a llei di limbã (Macedo-Vlach): ãã/dzã/lj/nj/sh/ts/a. Cara limba di izvur easti aleaptã armãna, nica u recomandãm ufilisearea a diacrititslor (Cunia icã DIARO, di cara li alãximu tru tsiva di arada). Neise, tradutsiile suntu, ngheneral, ma buni cãndu armãna easti limba di izvur, andicra di limba di tsintã.",
-                    "disclaimer": "Disclaimer: Armãna easti unã limbã multu scãdzutã di resursi shi nu easti standardizatã, avãnda multi soiuri. Di itia a aesta, calitatea a tradutsiljei easti experientalã, shi di multi ori subtempereadzã atsea tsi s-poati s-exceptsã di la un sistem di tradutseri trã limbile di mesi shi analti izvuri. Pot s-aiba alathusi dit tradutsiri, iu nascanti informatsii suntu ratati ica suntu alaxiti. Zboarãli tsi li scoasi tru migdani urnekea nica s-poati s-hibã zboarãli di-alihea armãneascã. Vã placarsim sã ufilisits serviciile profesioniste di traduceri umanã trã probleme sensibile cari caftã accurateatsã analtã."
+                    "disclaimer": "Disclaimer: Armãna easti unã limbã multu scãdzutã di resursi shi nu easti standardizatã, avãnda multi soiuri. Di itia a aesta, calitatea a tradutsiljei easti experientalã, shi di multi ori subtempereadzã atsea tsi s-poati s-exceptsã di la un sistem di tradutseri trã limbile di mesi shi analti izvuri. Pot s-aiba alathusi dit tradutsiri, iu nascanti informatsii suntu ratati ica suntu alaxiti. Zboarãli tsi li scoasi tru migdani urnekea nica s-poati s-hibã zboarãli di-alihea armãneascã. Vã placarsim sã ufilisits serviciile profesioniste di traduceri umanã trã probleme sensibile cari caftã accurateatsã analtã.",
+                    "error-level-1": "Eroarã Di Nivelu 1",
+                    "error-level-2": "Eroarã Di Nivelu 2",
+                    "clear-error": "Ashteardzi Eroarea",
+                    "feedback": "Comentarili a tali suntu ghini viniti!",
+                    'star1': '1 steauã',
+                    'star2': '2 steali',
+                    'star3': '3 steali',
+                    'star4': '4 steali',
+                    'star5': '5 steali',
+                    "public-url": "URL Publicu",
+                    "private-url": "URL Privati",
                 },
                 "en": {  
                     "translate-button": "Translate",
@@ -335,19 +525,50 @@
                     "p1": "AroTranslate is the first comprehensive translation system for Aromanian, a unique and endangered Romance language spoken by over 300,000 people in the Balkans. Read more in",
                     "p2": "You can translate between any two of Aromanian, Romanian and English in any direction. The word limit is around 1000 words, but this depends on the text's constitution. We also recommend using diacritics in the input for the best translation quality. Read more in",
                     "p3": "All translations with Aromanian as target language are made by default with the orthography proposed by Tiberius Cunia ã/dz/lj/nj/sh/ts. You can adjust the orthography to use DIARO, the linguistically-motivated standardization proposed by Matilda Caragiu Marioțeanu in her Aromanian (Macedo-Vlach) Dictionary: ăâ/ḑ/ľ/ń/ș/ț </a>. If Aromanian is selected as source language, we still recommend the usage of diacritics (Cunia or DIARO, as we convert them to something common). Lastly, translations are generally better when Aromanian is the source language, rather than the target language.",
-                    "disclaimer": "Disclaimer: Aromanian is a very low resource language and is not standardized, having many varieties. Due to this, translation quality is experimental, and oftentimes subpar what you might except from a translation system for medium to high resource languages. There may occur translation errors, where certain information is missed or altered. The words generated by the model might not even be real Aromanian words. Please use professional human translation services for sensitive issues that require high accuracy."
+                    "disclaimer": "Disclaimer: Aromanian is a very low resource language and is not standardized, having many varieties. Due to this, translation quality is experimental, and oftentimes subpar what you might except from a translation system for medium to high resource languages. There may occur translation errors, where certain information is missed or altered. The words generated by the model might not even be real Aromanian words. Please use professional human translation services for sensitive issues that require high accuracy.",
+                    "error-level-1": "Error Level 1",
+                    "error-level-2": "Error Level 2",
+                    "clear-error": "Clear Error",
+                    "feedback": "Your feedback is welcome!",
+                    'star1': '1 star',
+                    'star2': '2 stars',
+                    'star3': '3 stars',
+                    'star4': '4 stars',
+                    'star5': '5 stars',
+                    "public-url": "Public URL",
+                    "private-url": "Private URL",
                 }
             }
         
-            ids = ["translate-button", "language-info1", "language-info2", "ron-option1", "rup-option1", "ron-option2", "rup-option2", "dropdownInputLanguage", "dropdownOutputLanguage", "inputText", "outputText", "about-us", "eng-option1", "eng-option2", "what-is", "usage", "p1", "p2", "p3", "disclaimer"]
+            ids = ["translate-button", "language-info1", "language-info2", "ron-option1", "rup-option1", "ron-option2", "rup-option2", "dropdownInputLanguage", "dropdownOutputLanguage", "inputText", "about-us", "eng-option1", "eng-option2", "what-is", "usage", "p1", "p2", "p3", "disclaimer", "feedback"]
             for (var i = 0; i < ids.length; i++){
-                if (ids[i] == "inputText" || ids[i] == "outputText"){
+                if (ids[i] == "inputText" || ids[i] == "feedback"){
                     var thing = document.getElementById(ids[i])
                     thing.setAttribute('placeholder', contents[lang][ids[i]])
                 }else{
                     var thing = document.getElementById(ids[i])
                     thing.textContent = contents[lang][ids[i]]
                 }
+            }
+            
+            document.getElementById("outputText").setAttribute('data-placeholder', contents[lang]["outputText"])
+
+            ids = ["error-level-1", "error-level-2", "clear-error"]
+            for (var i = 0; i < ids.length; i++){
+                var thing = document.getElementById(ids[i])
+                thing.textContent = contents[lang][ids[i]]
+            }
+
+            ids = ["star1", "star2", "star3", "star4", "star5"]
+            for (var i = 0; i < ids.length; i++){
+                var thing = document.querySelector("label[for='" + ids[i] + "']")
+                thing.setAttribute('title', contents[lang][ids[i]])
+            }
+
+            ids = ["public-url", "private-url"]
+            for (var i = 0; i < ids.length; i++){
+                var thing = document.querySelector("label[for='" + ids[i] + "']")
+                thing.textContent = contents[lang][ids[i]] + ":"
             }
         }
 
@@ -380,8 +601,14 @@
         });
 
         document.getElementById('copyOutputText').addEventListener('click', function() {
-            const outputText = document.getElementById('outputText');
-            outputText.select();
+            range = document.createRange();
+
+            range.selectNodeContents(document.getElementById('outputText'));
+
+            selection = getSelectedText();
+            selection.removeAllRanges();
+            selection.addRange(range);
+
             document.execCommand('copy');
         });
 
@@ -415,10 +642,10 @@
             outputDropdown.setAttribute('data-value', tempValue);
 
             var inputText = document.getElementById('inputText').value;
-            var outputText = document.getElementById('outputText').value;
+            var outputText = document.getElementById('outputText').textContent;
 
             document.getElementById('inputText').value = outputText;
-            document.getElementById('outputText').value = inputText;
+            document.getElementById('outputText').textContent = inputText;
               
             tempText = tempText.trim()
             if (tempText === "Aromanian" | tempText === "Armãnã" | tempText === "Aromână") {
@@ -523,6 +750,201 @@
 
             convert_diacritics();
         });
+
+    $("#outputText").bind("contextmenu", function (event) {
+        event.preventDefault();
+        
+        $(".error-right-click-menu").toggle(100)
+
+        $(".error-right-click-menu").css({
+            top: event.pageY + "px",
+            left: event.pageX + "px"
+        });
+    });
+
+    $(document).bind("mousedown", function (e) {
+        if (!$(e.target).parents(".error-right-click-menu").length > 0) {
+            $(".error-right-click-menu").hide(100);
+        }
+    });
+
+    $(".error-right-click-menu li").click(function(){
+        switch($(this).attr("data-action")) {
+            case "error-1": highlightSelection("highlight-error-level-1"); break;
+            case "error-2": highlightSelection("highlight-error-level-2"); break;
+            case "error-none": clearHighlightedSelection(); break;
+        }
+    
+        $(".error-right-click-menu").hide(100);
+    });
+
+    function getSelectedText(){
+        var selectedText = '';
+        if(window.getSelection) {
+            selectedText = window.getSelection();
+        } else if(document.getSelection) {
+            selectedText = document.getSelection();
+        } else if(document.selection) {
+            selectedText = document.selection.createRange().text;
+        }
+        return selectedText;
+    }
+
+    function highlightSelection(highlight_class) {
+        if (!savedRange || savedRange.rangeCount === 0 || savedRange.isCollapsed) {
+            return;
+        }
+
+        const container = document.getElementById("outputText");
+
+        if (!container.contains(savedRange.commonAncestorContainer) || rangeContainsHighlight(savedRange)) {
+            savedRange = null;
+            return;
+        }
+
+        const fragment = savedRange.extractContents();
+
+        const span = document.createElement("span");
+        span.className = highlight_class;
+        span.appendChild(fragment);
+
+        savedRange.insertNode(span);
+
+        getSelectedText().removeAllRanges();
+        savedRange = null;
+    }
+
+    function rangeContainsHighlight(range) {
+        const container_inner = document.createElement("div");
+        container_inner.appendChild(range.cloneContents());
+
+        return container_inner.querySelector(".highlight-error-level-1") !== null || container_inner.querySelector(".highlight-error-level-2") !== null;
+    }
+
+    $("#outputText").on("mouseup keyup", function () {
+        const selection = getSelectedText();
+
+        if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+            savedRange = selection.getRangeAt(0).cloneRange();
+        }
+    });
+
+    let savedRange = null;
+
+    function clearHighlightedSelection(){
+        if (!savedRange || savedRange.rangeCount === 0 || savedRange.isCollapsed) {
+            return;
+        }
+
+        const container = document.getElementById("outputText");
+
+        if (!container.contains(savedRange.commonAncestorContainer)) {
+            savedRange = null;
+            return;
+        }
+
+        const fragment = savedRange.extractContents();
+
+        const tempDiv = document.createElement("div");
+        tempDiv.appendChild(fragment);
+
+        const textContent = tempDiv.textContent || tempDiv.innerText || "";
+        const textNode = document.createTextNode(textContent);
+
+        savedRange.insertNode(textNode);
+
+        getSelectedText().removeAllRanges();
+        savedRange = null;
+    }
+
+    function getAllHighlightedRanges(highlight_class) {
+        const root = document.getElementById("outputText");
+        const highlights = root.querySelectorAll(highlight_class);
+        const ranges = [];
+
+        const walker = document.createTreeWalker(
+            root,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+        );
+
+        let textNodes = [];
+        let charCount = 0;
+        let node;
+
+        while ((node = walker.nextNode())) {
+            textNodes.push({
+                node: node,
+                start: charCount,
+                end: charCount + node.textContent.length - 1
+            });
+            charCount += node.textContent.length;
+        }
+
+        highlights.forEach(span => {
+            let start = null;
+            let end = null;
+
+            textNodes.forEach(tn => {
+                if (span.contains(tn.node)) {
+                    if (start === null) {
+                        start = tn.start;
+                    }
+                    end = tn.end;
+                }
+            });
+
+            if (start !== null && end !== null) {
+                ranges.push({
+                    start: start,
+                    end: end,
+                    text: root.textContent.substring(start, end + 1)
+                });
+            }
+        });
+
+        return ranges;
+    }
+
+    $("#submitFeedback").on("click", function () {
+        const feedbackText = document.getElementById("feedback").value;
+        const rating = document.querySelector('input[name="rate"]:checked') ? document.querySelector('input[name="rate"]:checked').value : null;
+
+        const errorLevel1Ranges = getAllHighlightedRanges(".highlight-error-level-1");
+        const errorLevel2Ranges = getAllHighlightedRanges(".highlight-error-level-2");
+
+        const original_text = document.getElementById("inputText").value;
+        const translated_text = document.getElementById("outputText").textContent;
+
+        const annotations = errorLevel1Ranges.concat(errorLevel2Ranges);
+
+        const requestData = {
+            original_text: original_text,
+            translated_text: translated_text,
+            annotations: errorLevelRanges,
+            stars: rating,
+            feedback: feedbackText
+        };
+
+        fetch('/annotations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.querySelector('public-url').value = document.location.origin + '/' + data.public_url;
+            document.querySelector('private-url').value = document.location.origin + '/' + data.public_url + "/" + data.private_url;
+            document.querySelector('.hidden-urls').style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error submitting feedback.');
+        });
+    });
     </script>
 </body>
 </html>
