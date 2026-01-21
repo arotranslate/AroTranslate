@@ -8,122 +8,98 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f1f1f1;
+            font-family: sans-serif;
             min-height: 100vh;
             display: flex;
-            align-items: center;
-            justify-content: center;
+            flex-direction: column;
         }
-        .login-container {
-            max-width: 420px;
-            width: 100%;
-            padding: 20px;
+
+        h1 {
+            font-weight: bold;
         }
-        .login-card {
+
+        .container {
             background: white;
-            border-radius: 12px;
-            padding: 45px 40px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
-        .login-header {
-            text-align: center;
-            margin-bottom: 35px;
-        }
-        .login-header i {
-            color: #667eea;
-        }
-        .login-header h2 {
-            color: #2d3748;
-            font-weight: 700;
-            margin-top: 15px;
-            margin-bottom: 5px;
-        }
-        .login-header p {
-            color: #718096;
-            font-size: 0.95rem;
-        }
-        .form-group label {
-            font-weight: 600;
-            color: #4a5568;
-            font-size: 0.9rem;
-            margin-bottom: 8px;
-        }
+
         .form-control {
-            border-radius: 8px;
-            border: 1.5px solid #e2e8f0;
-            padding: 12px 15px;
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
         }
+
         .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #007bff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
         }
-        .btn-login {
-            width: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            font-weight: 600;
-            padding: 13px;
-            border-radius: 8px;
-            border: none;
-            font-size: 1rem;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+        button {
+            font-size: 14px;
+            padding: 8px 12px;
         }
-        .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 7px 20px rgba(102, 126, 234, 0.4);
-            color: white;
+
+        .no-style {
+            color: inherit;
+            text-decoration: none;
         }
-        .btn-login:active {
-            transform: translateY(0);
+
+        .no-style:hover,
+        .no-style:focus,
+        .no-style:visited,
+        .no-style:active {
+            color: inherit;
+            text-decoration: none;
         }
+
+        .custom-heading p {
+            color: #6c757d;
+            font-weight: 510;
+            margin-bottom: 0;
+        }
+
+        footer {
+            margin-top: auto;
+        }
+
+        .login-container {
+            max-width: 450px;
+            margin: 0 auto;
+        }
+
         .alert {
-            margin-bottom: 25px;
-            border-radius: 8px;
-            border: none;
+            margin-bottom: 20px;
+            border-radius: 0.25rem;
         }
-        .alert-danger {
-            background-color: #fed7d7;
-            color: #c53030;
-        }
-        .back-link {
-            text-align: center;
-            margin-top: 25px;
-        }
-        .back-link a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.2s ease;
-        }
-        .back-link a:hover {
-            color: #764ba2;
-            text-decoration: none;
-        }
-        .input-group-text {
-            background-color: #f7fafc;
-            border: 1.5px solid #e2e8f0;
-            border-right: none;
-            border-radius: 8px 0 0 8px;
-        }
-        .input-group .form-control {
-            border-left: none;
-        }
-        .input-group .form-control:focus {
-            border-left: none;
+
+        @media (max-width: 767.98px) {
+            .container {
+                padding: 10px;
+            }
         }
     </style>
 </head>
-<body>
-    <div class="login-container">
-        <div class="login-card">
-            <div class="login-header">
-                <i class="fas fa-shield-alt fa-3x"></i>
-                <h2>Admin Login</h2>
-                <p>Sign in to access the admin dashboard</p>
+<body style="padding-left: 15px; padding-right: 15px;">
+    <header>
+        <nav>
+            <div class="container mt-5">
+                <div class="row d-flex align-items-center">
+                    <div class="col-6 text-left">
+                        <a href="/" class="no-style"><h3 class="m-0"><b>AroTranslate</b></h3></a>
+                    </div>
+                    <div class="col-6 d-flex justify-content-end align-items-center">
+                        <a href="/about" class="custom-heading"><p>About Us</p></a>
+                    </div>
+                </div>
             </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="container mt-5 login-container">
+            <h1 class="text-center mb-4">Admin Login</h1>
 
             <!-- Flash Messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -142,9 +118,7 @@
             <!-- Login Form -->
             <form method="POST" action="{{ url_for('login') }}">
                 <div class="form-group">
-                    <label for="username">
-                        <i class="fas fa-user"></i> Username
-                    </label>
+                    <label for="username">Username</label>
                     <input type="text"
                            class="form-control"
                            id="username"
@@ -155,9 +129,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="password">
-                        <i class="fas fa-lock"></i> Password
-                    </label>
+                    <label for="password">Password</label>
                     <input type="password"
                            class="form-control"
                            id="password"
@@ -166,18 +138,22 @@
                            required>
                 </div>
 
-                <button type="submit" class="btn btn-login">
-                    <i class="fas fa-sign-in-alt"></i> Log In
+                <button type="submit" class="btn btn-primary btn-sm btn-block">
+                    Log In
                 </button>
             </form>
 
-            <div class="back-link">
-                <a href="{{ url_for('index') }}">
-                    <i class="fas fa-arrow-left"></i> Back to Translator
-                </a>
+            <div class="text-center mt-3">
+                <a href="{{ url_for('index') }}">Back to Translator</a>
             </div>
-        </div>
-    </div>
+        </section>
+    </main>
+
+    <footer>
+        <p style="text-align: center; color: grey;">
+            Made with <span style="color: red;" aria-hidden="true">&#10084;</span><span class="sr-only">love</span>
+        </p>
+    </footer>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>

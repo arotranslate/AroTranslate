@@ -449,6 +449,7 @@
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="{{ url_for('static', filename='js/annotations.js') }}"></script>
     <script>
         function setLang(lang) {
             let contents = {
@@ -655,11 +656,11 @@
             outputDropdown.setAttribute('data-value', tempValue);
 
             var inputText = document.getElementById('inputText').value;
-            var outputText = document.getElementById('outputText').textContent;
+            var outputText = annotationManager.getText();
 
             document.getElementById('inputText').value = outputText;
-            document.getElementById('outputText').textContent = inputText;
-              
+            annotationManager.setText(inputText);
+
             tempText = tempText.trim()
             if (tempText === "Aromanian" | tempText === "Armãnã" | tempText === "Aromână") {
                 document.getElementById('diacritics').style.display = 'block';
@@ -669,7 +670,7 @@
         });
 
         function convert_diacritics() {
-            text = document.getElementById('outputText').textContent;
+            text = annotationManager.getText();
             orthography = "diaro";
 
             if (document.getElementById('diaro').style.textDecoration !== "none") {
@@ -690,11 +691,11 @@
             })
             .then(response => response.json())
             .then(data => {
-                document.getElementById('outputText').textContent = data.text;
+                annotationManager.setText(data.text);
             })
             .catch(error => {
                 console.error('Error:', error);
-                document.getElementById('outputText').textContent = 'Error: Unable to convert diacritics.';
+                annotationManager.setText('Error: Unable to convert diacritics.');
             });
         }
 
@@ -709,7 +710,7 @@
                 output_language: outputLanguage
             };
 
-            document.getElementById('outputText').textContent = 'Translating...';
+            annotationManager.setText('Translating...');
 
             fetch('/translate', {
                 method: 'POST',
@@ -721,7 +722,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data && data.translated_text) {
-                    document.getElementById('outputText').textContent = data.translated_text;
+                    annotationManager.setText(data.translated_text);
                     document.getElementById('translate_time').textContent = data.translate_time + ' s';
                     document.getElementById('translate_time').style.display = 'block'; // Ensure it is visible
 
@@ -735,12 +736,12 @@
                     // }, 20000);
                 } else {
                     console.error('Error: Translation not found.');
-                    document.getElementById('outputText').textContent = 'Error: Translation not found.';
+                    annotationManager.setText('Error: Translation not found.');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                document.getElementById('outputText').textContent = 'Error: Unable to translate.';
+                annotationManager.setText('Error: Unable to translate.');
             });
         });
       
@@ -764,189 +765,20 @@
             convert_diacritics();
         });
 
-    $("#outputText").bind("contextmenu", function (event) {
-        event.preventDefault();
-        
-        $(".error-right-click-menu").toggle(100)
-
-        $(".error-right-click-menu").css({
-            top: event.pageY + "px",
-            left: event.pageX + "px"
-        });
+    // Initialize annotation manager
+    const annotationManager = new AnnotationManager({
+        targetElementId: 'outputText',
+        menuSelector: '.error-right-click-menu'
     });
-
-    $(document).bind("mousedown", function (e) {
-        if (!$(e.target).parents(".error-right-click-menu").length > 0) {
-            $(".error-right-click-menu").hide(100);
-        }
-    });
-
-    $(".error-right-click-menu li").click(function(){
-        switch($(this).attr("data-action")) {
-            case "error-1": highlightSelection("highlight-error-level-1"); break;
-            case "error-2": highlightSelection("highlight-error-level-2"); break;
-            case "error-none": clearHighlightedSelection(); break;
-        }
-    
-        $(".error-right-click-menu").hide(100);
-    });
-
-    function getSelectedText(){
-        var selectedText = '';
-        if(window.getSelection) {
-            selectedText = window.getSelection();
-        } else if(document.getSelection) {
-            selectedText = document.getSelection();
-        } else if(document.selection) {
-            selectedText = document.selection.createRange().text;
-        }
-        return selectedText;
-    }
-
-    function highlightSelection(highlight_class) {
-        if (!savedRange || savedRange.collapsed) {
-            return;
-        }
-
-        const container = document.getElementById("outputText");
-
-        if (!container.contains(savedRange.commonAncestorContainer)) {
-            savedRange = null;
-            return;
-        }
-
-        // Extract the contents (may include existing highlights)
-        const fragment = savedRange.extractContents();
-
-        // Strip existing highlights and get clean text/content
-        const tempDiv = document.createElement("div");
-        tempDiv.appendChild(fragment);
-
-        // Remove any existing highlight spans but keep their content
-        tempDiv.querySelectorAll(".highlight-error-level-1, .highlight-error-level-2").forEach(span => {
-            while (span.firstChild) {
-                span.parentNode.insertBefore(span.firstChild, span);
-            }
-            span.remove();
-        });
-
-        // Create new highlight span and add the cleaned content
-        const span = document.createElement("span");
-        span.className = highlight_class;
-        while (tempDiv.firstChild) {
-            span.appendChild(tempDiv.firstChild);
-        }
-
-        savedRange.insertNode(span);
-
-        getSelectedText().removeAllRanges();
-        savedRange = null;
-    }
-
-    function rangeContainsHighlight(range) {
-        const container_inner = document.createElement("div");
-        container_inner.appendChild(range.cloneContents());
-
-        return container_inner.querySelector(".highlight-error-level-1") !== null || container_inner.querySelector(".highlight-error-level-2") !== null;
-    }
-
-    $("#outputText").on("mouseup keyup", function () {
-        const selection = getSelectedText();
-
-        if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
-            savedRange = selection.getRangeAt(0).cloneRange();
-        }
-    });
-
-    let savedRange = null;
-
-    function clearHighlightedSelection(){
-        if (!savedRange || savedRange.collapsed) {
-            return;
-        }
-
-        const container = document.getElementById("outputText");
-
-        if (!container.contains(savedRange.commonAncestorContainer)) {
-            savedRange = null;
-            return;
-        }
-
-        const fragment = savedRange.extractContents();
-
-        const tempDiv = document.createElement("div");
-        tempDiv.appendChild(fragment);
-
-        const textContent = tempDiv.textContent || tempDiv.innerText || "";
-        const textNode = document.createTextNode(textContent);
-
-        savedRange.insertNode(textNode);
-
-        getSelectedText().removeAllRanges();
-        savedRange = null;
-    }
-
-    function getAllHighlightedRanges(highlight_class) {
-        const root = document.getElementById("outputText");
-        const highlights = root.querySelectorAll(highlight_class);
-        const ranges = [];
-
-        const walker = document.createTreeWalker(
-            root,
-            NodeFilter.SHOW_TEXT,
-            null,
-            false
-        );
-
-        let textNodes = [];
-        let charCount = 0;
-        let node;
-
-        while ((node = walker.nextNode())) {
-            textNodes.push({
-                node: node,
-                start: charCount,
-                end: charCount + node.textContent.length - 1
-            });
-            charCount += node.textContent.length;
-        }
-
-        highlights.forEach(span => {
-            let start = null;
-            let end = null;
-
-            textNodes.forEach(tn => {
-                if (span.contains(tn.node)) {
-                    if (start === null) {
-                        start = tn.start;
-                    }
-                    end = tn.end;
-                }
-            });
-
-            if (start !== null && end !== null) {
-                ranges.push({
-                    start: start,
-                    end: end,
-                    text: root.textContent.substring(start, end + 1)
-                });
-            }
-        });
-
-        return ranges;
-    }
 
     $("#submitFeedback").on("click", function () {
         const feedbackText = document.getElementById("feedback").value;
         const rating = document.querySelector('input[name="rate"]:checked') ? document.querySelector('input[name="rate"]:checked').value : null;
 
-        const errorLevel1Ranges = getAllHighlightedRanges(".highlight-error-level-1").map((a) => ({start: a.start, end: a.end, level: 1}));
-        const errorLevel2Ranges = getAllHighlightedRanges(".highlight-error-level-2").map((a) => ({start: a.start, end: a.end, level: 2}));
-
         const original_text = document.getElementById("inputText").value;
-        const translated_text = document.getElementById("outputText").textContent;
+        const translated_text = annotationManager.getText();
 
-        const annotations = errorLevel1Ranges.concat(errorLevel2Ranges);
+        const annotations = annotationManager.getAllAnnotations();
 
         const requestData = {
             original_text: original_text,

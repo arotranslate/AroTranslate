@@ -146,6 +146,10 @@
             color: black;
         }
 
+        .dropdown-menu {
+            z-index: 1000;
+        }
+
         @media (max-width: 767.98px) {
             .container {
                 padding: 10px;
@@ -166,7 +170,18 @@
                         <a href="/" class="no-style"><h3 class="m-0"><b>AroTranslate</b></h3></a>
                     </div>
                     <div class="col-6 d-flex justify-content-end align-items-center">
-                        <a href="/about" class="custom-heading"><p>About Us</p></a>
+
+                        <div class="dropdown me-3">
+                            <a class="nav-link dropdown-toggle" href="#" id="dropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                English
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+                                <li><a class="dropdown-item active" href="#" onclick="setLang('en')">English</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="setLang('rup')">Armãnã</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="setLang('ron')">Românǎ</a></li>
+                            </ul>
+                        </div>
+                        <a href="/about" class="custom-heading"><p id="about-us">About Us</p></a>
                     </div>
                 </div>
             </div>
@@ -177,11 +192,11 @@
         <section class="container mt-5">
             <div class="row mb-3">
                 <div class="col-12">
-                    <h4>Annotation Details
+                    <h4 id="annotation-details">Annotation Details
                         {% if can_edit %}
-                        <span class="badge-edit">Editable</span>
+                        <span class="badge-edit" id="badge-editable">Editable</span>
                         {% else %}
-                        <span class="badge-view">View Only</span>
+                        <span class="badge-view" id="badge-view-only">View Only</span>
                         {% endif %}
                     </h4>
                 </div>
@@ -189,11 +204,11 @@
 
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <h5>Original Text</h5>
+                    <h5 id="original-text-label">Original Text</h5>
                     <div class="text-box">{{ annotation.original_text }}</div>
                 </div>
                 <div class="col-md-6 mb-3">
-                    <h5>Translated Text</h5>
+                    <h5 id="translated-text-label">Translated Text</h5>
                     <div class="text-box" id="translatedText" {% if can_edit %}contenteditable="true" onbeforeinput="return false"{% endif %}>{{ annotation.translated_text }}</div>
                 </div>
             </div>
@@ -201,8 +216,8 @@
             {% if can_edit %}
             <div class="row mt-3">
                 <div class="col-12">
-                    <button id="updateAnnotations" class="btn btn-success">Update Annotations</button>
-                    <small class="text-muted ml-2">Right-click on text to add or modify error annotations</small>
+                    <button id="updateAnnotations" class="btn btn-success"><span id="update-button-text">Update Annotations</span></button>
+                    <small class="text-muted ml-2" id="right-click-hint">Right-click on text to add or modify error annotations</small>
                 </div>
             </div>
             {% endif %}
@@ -210,15 +225,15 @@
             {% if annotation.annotations and annotation.annotations|length > 0 %}
             <div class="row mt-4">
                 <div class="col-12">
-                    <h5>Error Annotations ({{ annotation.annotations|length }})</h5>
+                    <h5><span id="error-annotations-label">Error Annotations</span> ({{ annotation.annotations|length }})</h5>
                     <ul class="list-group">
                         {% for ann in annotation.annotations %}
                         <li class="list-group-item">
                             <span class="badge {% if ann.level == 1 %}badge-primary{% else %}badge-danger{% endif %}">
-                                Error Level {{ ann.level }}
+                                <span class="error-level-text">Error Level</span> {{ ann.level }}
                             </span>
-                            <strong>Position:</strong> {{ ann.start }} - {{ ann.end }} |
-                            <strong>Text:</strong> "{{ annotation.translated_text[ann.start:ann.end + 1] }}"
+                            <strong class="position-label">Position:</strong> {{ ann.start }} - {{ ann.end }} |
+                            <strong class="text-label">Text:</strong> "{{ annotation.translated_text[ann.start:ann.end + 1] }}"
                         </li>
                         {% endfor %}
                     </ul>
@@ -229,10 +244,10 @@
             {% if annotation.stars %}
             <div class="row mt-4">
                 <div class="col-12">
-                    <h5>Rating</h5>
+                    <h5 id="rating-label">Rating</h5>
                     <div class="rate">
                         {% for i in range(5, 0, -1) %}
-                        <label {% if i <= annotation.stars|int %}class="filled"{% endif %} title="{{ i }} star{% if i > 1 %}s{% endif %}"></label>
+                        <label {% if i <= annotation.stars|int %}class="filled"{% endif %} title="{{ i }} star{% if i > 1 %}s{% endif %}" id="star-label-{{ i }}"></label>
                         {% endfor %}
                     </div>
                     <div style="clear: both;"></div>
@@ -243,7 +258,7 @@
             {% if annotation.feedback and annotation.feedback|length > 0 %}
             <div class="row mt-4">
                 <div class="col-12">
-                    <h5>Feedback</h5>
+                    <h5 id="feedback-label">Feedback</h5>
                     <div class="alert alert-info">
                         {{ annotation.feedback }}
                     </div>
@@ -253,7 +268,7 @@
 
             <div class="row mt-4">
                 <div class="col-12">
-                    <a href="/" class="btn btn-primary">Back to Translator</a>
+                    <a href="/" class="btn btn-primary" id="back-to-translator">Back to Translator</a>
                 </div>
             </div>
         </section>
@@ -276,209 +291,22 @@
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="{{ url_for('static', filename='js/annotations.js') }}"></script>
     <script>
-        // Apply highlights to the translated text based on annotations
-        document.addEventListener('DOMContentLoaded', function() {
-            const translatedTextDiv = document.getElementById('translatedText');
-            const originalText = translatedTextDiv.textContent;
-            const initialAnnotations = {{ annotation.annotations|tojson|safe }};
+        // Initialize annotation manager with initial annotations
+        const initialAnnotations = {{ annotation.annotations|tojson|safe }};
 
-            if (initialAnnotations && initialAnnotations.length > 0) {
-                // Sort annotations by start position (reverse order for proper insertion)
-                initialAnnotations.sort((a, b) => b.start - a.start);
-
-                let result = originalText;
-
-                initialAnnotations.forEach(ann => {
-                    const start = ann.start;
-                    const end = ann.end + 1;
-                    const highlightClass = ann.level === 1 ? 'highlight-error-level-1' : 'highlight-error-level-2';
-
-                    const before = result.substring(0, start);
-                    const highlighted = result.substring(start, end);
-                    const after = result.substring(end);
-
-                    result = before + '<span class="' + highlightClass + '">' + highlighted + '</span>' + after;
-                });
-
-                translatedTextDiv.innerHTML = result;
-            }
+        const annotationManager = new AnnotationManager({
+            targetElementId: 'translatedText',
+            menuSelector: '.error-right-click-menu',
+            initialAnnotations: initialAnnotations || []
         });
 
         {% if can_edit %}
-        let savedRange = null;
-
-        function getSelectedText() {
-            var selectedText = '';
-            if(window.getSelection) {
-                selectedText = window.getSelection();
-            } else if(document.getSelection) {
-                selectedText = document.getSelection();
-            } else if(document.selection) {
-                selectedText = document.selection.createRange().text;
-            }
-            return selectedText;
-        }
-
-        function highlightSelection(highlight_class) {
-            if (!savedRange || savedRange.collapsed) {
-                return;
-            }
-
-            const container = document.getElementById("translatedText");
-
-            if (!container.contains(savedRange.commonAncestorContainer)) {
-                savedRange = null;
-                return;
-            }
-
-            // Extract the contents (may include existing highlights)
-            const fragment = savedRange.extractContents();
-
-            // Strip existing highlights and get clean text/content
-            const tempDiv = document.createElement("div");
-            tempDiv.appendChild(fragment);
-
-            // Remove any existing highlight spans but keep their content
-            tempDiv.querySelectorAll(".highlight-error-level-1, .highlight-error-level-2").forEach(span => {
-                while (span.firstChild) {
-                    span.parentNode.insertBefore(span.firstChild, span);
-                }
-                span.remove();
-            });
-
-            // Create new highlight span and add the cleaned content
-            const span = document.createElement("span");
-            span.className = highlight_class;
-            while (tempDiv.firstChild) {
-                span.appendChild(tempDiv.firstChild);
-            }
-
-            savedRange.insertNode(span);
-
-            getSelectedText().removeAllRanges();
-            savedRange = null;
-        }
-
-        function clearHighlightedSelection() {
-            if (!savedRange || savedRange.collapsed) {
-                return;
-            }
-
-            const container = document.getElementById("translatedText");
-
-            if (!container.contains(savedRange.commonAncestorContainer)) {
-                savedRange = null;
-                return;
-            }
-
-            const fragment = savedRange.extractContents();
-
-            const tempDiv = document.createElement("div");
-            tempDiv.appendChild(fragment);
-
-            const textContent = tempDiv.textContent || tempDiv.innerText || "";
-            const textNode = document.createTextNode(textContent);
-
-            savedRange.insertNode(textNode);
-
-            getSelectedText().removeAllRanges();
-            savedRange = null;
-        }
-
-        function getAllHighlightedRanges(highlight_class) {
-            const root = document.getElementById("translatedText");
-            const highlights = root.querySelectorAll(highlight_class);
-            const ranges = [];
-
-            const walker = document.createTreeWalker(
-                root,
-                NodeFilter.SHOW_TEXT,
-                null,
-                false
-            );
-
-            let textNodes = [];
-            let charCount = 0;
-            let node;
-
-            while ((node = walker.nextNode())) {
-                textNodes.push({
-                    node: node,
-                    start: charCount,
-                    end: charCount + node.textContent.length - 1
-                });
-                charCount += node.textContent.length;
-            }
-
-            highlights.forEach(span => {
-                let start = null;
-                let end = null;
-
-                textNodes.forEach(tn => {
-                    if (span.contains(tn.node)) {
-                        if (start === null) {
-                            start = tn.start;
-                        }
-                        end = tn.end;
-                    }
-                });
-
-                if (start !== null && end !== null) {
-                    ranges.push({
-                        start: start,
-                        end: end,
-                        text: root.textContent.substring(start, end + 1)
-                    });
-                }
-            });
-
-            return ranges;
-        }
-
-        // Context menu handling
-        $("#translatedText").bind("contextmenu", function (event) {
-            event.preventDefault();
-
-            $(".error-right-click-menu").toggle(100);
-
-            $(".error-right-click-menu").css({
-                top: event.pageY + "px",
-                left: event.pageX + "px"
-            });
-        });
-
-        $(document).bind("mousedown", function (e) {
-            if (!$(e.target).parents(".error-right-click-menu").length > 0) {
-                $(".error-right-click-menu").hide(100);
-            }
-        });
-
-        $(".error-right-click-menu li").click(function() {
-            switch($(this).attr("data-action")) {
-                case "error-1": highlightSelection("highlight-error-level-1"); break;
-                case "error-2": highlightSelection("highlight-error-level-2"); break;
-                case "error-none": clearHighlightedSelection(); break;
-            }
-
-            $(".error-right-click-menu").hide(100);
-        });
-
-        $("#translatedText").on("mouseup keyup", function () {
-            const selection = getSelectedText();
-
-            if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
-                savedRange = selection.getRangeAt(0).cloneRange();
-            }
-        });
-
         // Update annotations button
         $("#updateAnnotations").on("click", function () {
-            const errorLevel1Ranges = getAllHighlightedRanges(".highlight-error-level-1").map((a) => ({start: a.start, end: a.end, level: 1}));
-            const errorLevel2Ranges = getAllHighlightedRanges(".highlight-error-level-2").map((a) => ({start: a.start, end: a.end, level: 2}));
-
-            const translated_text = document.getElementById("translatedText").textContent;
-            const annotations = errorLevel1Ranges.concat(errorLevel2Ranges);
+            const translated_text = annotationManager.getText();
+            const annotations = annotationManager.getAllAnnotations();
 
             const requestData = {
                 private_id: "{{ annotation.private_id }}",
@@ -494,15 +322,178 @@
             })
             .then(response => response.json())
             .then(data => {
-                alert('Annotations updated successfully!');
+                const messages = {
+                    "ron": "Adnotările au fost actualizate cu succes!",
+                    "rup": "Adnotarilji s-actualizar cu successu!",
+                    "en": "Annotations updated successfully!"
+                };
+                alert(messages[currentLang]);
                 location.reload();
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Error updating annotations.');
+                const messages = {
+                    "ron": "Eroare la actualizarea adnotărilor.",
+                    "rup": "Eroarã la actualizarea a adnotariljei.",
+                    "en": "Error updating annotations."
+                };
+                alert(messages[currentLang]);
             });
         });
         {% endif %}
+
+        var currentLang = 'en';
+
+        // Multilingual support
+        function setLang(lang) {
+            let contents = {
+                "ron": {
+                    "about-us": "Despre Noi",
+                    "annotation-details": "Detalii Adnotare",
+                    "badge-editable": "Editabil",
+                    "badge-view-only": "Numai Vizualizare",
+                    "original-text-label": "Text Original",
+                    "translated-text-label": "Text Tradus",
+                    "update-button-text": "Actualizează Adnotările",
+                    "right-click-hint": "Clic dreapta pe text pentru a adăuga sau modifica adnotări de eroare",
+                    "error-annotations-label": "Adnotări de Eroare",
+                    "error-level-text": "Eroare De Nivel",
+                    "position-label": "Poziție:",
+                    "text-label": "Text:",
+                    "rating-label": "Evaluare",
+                    "feedback-label": "Comentarii",
+                    "back-to-translator": "Înapoi la Traducător",
+                    "error-level-1": "Eroare De Nivel 1",
+                    "error-level-2": "Eroare De Nivel 2",
+                    "clear-error": "Șterge Eroarea",
+                    "star1": "1 stea",
+                    "star2": "2 stele",
+                    "star3": "3 stele",
+                    "star4": "4 stele",
+                    "star5": "5 stele",
+                    "update-success": "Adnotările au fost actualizate cu succes!",
+                    "update-error": "Eroare la actualizarea adnotărilor."
+                },
+                "rup": {
+                    "about-us": "Ti Noi",
+                    "annotation-details": "Detalii di Adnotari",
+                    "badge-editable": "Editabil",
+                    "badge-view-only": "Numa Vididzari",
+                    "original-text-label": "Textu Original",
+                    "translated-text-label": "Textu Apridutsit",
+                    "update-button-text": "Actualizeadzã Adnotarilji",
+                    "right-click-hint": "Clic dreptu pi textu trã s-adavgi icã s-alãxeshti adnotari di eroari",
+                    "error-annotations-label": "Adnotari di Eroari",
+                    "error-level-text": "Eroarã Di Nivelu",
+                    "position-label": "Positsia:",
+                    "text-label": "Textu:",
+                    "rating-label": "Evaluari",
+                    "feedback-label": "Comentarii",
+                    "back-to-translator": "Anapoi la Apridutsitore",
+                    "error-level-1": "Eroarã Di Nivelu 1",
+                    "error-level-2": "Eroarã Di Nivelu 2",
+                    "clear-error": "Ashteardzi Eroarea",
+                    "star1": "1 steauã",
+                    "star2": "2 steali",
+                    "star3": "3 steali",
+                    "star4": "4 steali",
+                    "star5": "5 steali",
+                    "update-success": "Adnotariljis-actualizar cu successu!",
+                    "update-error": "Eroarã la actualizarea a adnotariljei."
+                },
+                "en": {
+                    "about-us": "About Us",
+                    "annotation-details": "Annotation Details",
+                    "badge-editable": "Editable",
+                    "badge-view-only": "View Only",
+                    "original-text-label": "Original Text",
+                    "translated-text-label": "Translated Text",
+                    "update-button-text": "Update Annotations",
+                    "right-click-hint": "Right-click on text to add or modify error annotations",
+                    "error-annotations-label": "Error Annotations",
+                    "error-level-text": "Error Level",
+                    "position-label": "Position:",
+                    "text-label": "Text:",
+                    "rating-label": "Rating",
+                    "feedback-label": "Feedback",
+                    "back-to-translator": "Back to Translator",
+                    "error-level-1": "Error Level 1",
+                    "error-level-2": "Error Level 2",
+                    "clear-error": "Clear Error",
+                    "star1": "1 star",
+                    "star2": "2 stars",
+                    "star3": "3 stars",
+                    "star4": "4 stars",
+                    "star5": "5 stars",
+                    "update-success": "Annotations updated successfully!",
+                    "update-error": "Error updating annotations."
+                }
+            };
+
+            // Update elements by ID
+            let ids = [
+                "about-us", "annotation-details", "badge-editable", "badge-view-only",
+                "original-text-label", "translated-text-label", "update-button-text",
+                "right-click-hint", "error-annotations-label", "rating-label",
+                "feedback-label", "back-to-translator", "error-level-1", "error-level-2", "clear-error"
+            ];
+
+            for (var i = 0; i < ids.length; i++) {
+                var element = document.getElementById(ids[i]);
+                if (element) {
+                    element.textContent = contents[lang][ids[i]];
+                }
+            }
+
+            // Update elements by class
+            var errorLevelElements = document.querySelectorAll('.error-level-text');
+            for (var i = 0; i < errorLevelElements.length; i++) {
+                errorLevelElements[i].textContent = contents[lang]["error-level-text"];
+            }
+
+            var positionLabels = document.querySelectorAll('.position-label');
+            for (var i = 0; i < positionLabels.length; i++) {
+                positionLabels[i].textContent = contents[lang]["position-label"];
+            }
+
+            var textLabels = document.querySelectorAll('.text-label');
+            for (var i = 0; i < textLabels.length; i++) {
+                textLabels[i].textContent = contents[lang]["text-label"];
+            }
+
+            // Update star labels
+            for (var i = 1; i <= 5; i++) {
+                var starLabel = document.getElementById('star-label-' + i);
+                if (starLabel) {
+                    starLabel.setAttribute('title', contents[lang]['star' + i]);
+                }
+            }
+
+            // Store language preference
+            currentLang = lang;
+        }
+
+        // Dropdown functionality (similar to index.html)
+        $(document).ready(function() {
+            $('.dropdown-toggle').on('click', function() {
+                var $this = $(this);
+                var $dropdownMenu = $this.next('.dropdown-menu');
+
+                $dropdownMenu.toggleClass('show');
+
+                $(document).on('click', function(e) {
+                    if (!$this.is(e.target) && $this.has(e.target).length === 0) {
+                        $dropdownMenu.removeClass('show');
+                    }
+                });
+            });
+
+            $('.dropdown-item').on('click', function() {
+                var $this = $(this);
+                var $dropdownToggle = $this.closest('.dropdown').find('.dropdown-toggle');
+                $dropdownToggle.text($this.text());
+            });
+        });
     </script>
 </body>
 </html>

@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AroTranslate Admin</title>
+    <title>Admin Dashboard | AroTranslate</title>
     <link
       href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
       rel="stylesheet"
@@ -17,52 +17,59 @@
         background-color: #f1f1f1;
         font-family: sans-serif;
         min-height: 100vh;
+        display: flex;
+        flex-direction: column;
       }
 
-      .navbar {
-        background-color: #343a40;
-        padding: 1rem 2rem;
+      footer {
+        margin-top: auto;
       }
 
-      .navbar-brand {
-        color: #fff;
+      h1 {
         font-weight: bold;
-        font-size: 1.5rem;
       }
 
-      .container-main {
-        margin-top: 2rem;
-        margin-bottom: 2rem;
-      }
-
-      .stats-card {
+      .container {
         background: white;
-        border-radius: 8px;
         padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-top: 20px;
         margin-bottom: 20px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
 
-      .stats-number {
-        font-size: 2rem;
-        font-weight: bold;
-        color: #007bff;
+      .custom-heading p {
+        color: #6c757d;
+        font-weight: 510;
+        margin-bottom: 0;
+      }
+
+      .no-style {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .no-style:hover,
+      .no-style:focus,
+      .no-style:visited,
+      .no-style:active {
+        color: inherit;
+        text-decoration: none;
       }
 
       .annotation-card {
         background: white;
+        border: 1px solid #ced4da;
         border-radius: 8px;
         padding: 20px;
         margin-bottom: 20px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        transition: transform 0.2s;
+        transition: all 0.2s;
         cursor: pointer;
       }
 
       .annotation-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-        background-color: #f8f9fa;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        border-color: #007bff;
       }
 
       .annotation-header {
@@ -70,14 +77,14 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 15px;
-        border-bottom: 2px solid #f1f1f1;
         padding-bottom: 10px;
+        border-bottom: 1px solid #e9ecef;
       }
 
       .annotation-id {
         font-family: monospace;
         color: #6c757d;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
       }
 
       .annotation-date {
@@ -90,51 +97,57 @@
       }
 
       .text-label {
-        font-weight: bold;
+        font-weight: 600;
         color: #495057;
         margin-bottom: 5px;
+        font-size: 0.95rem;
       }
 
       .text-content {
-        background-color: #f8f9fa;
-        padding: 10px;
+        background-color: #e9ecef;
+        padding: 12px;
         border-radius: 4px;
-        border-left: 3px solid #007bff;
-      }
-
-      .annotations-list {
-        margin-top: 10px;
+        font-size: 0.95rem;
+        line-height: 1.5;
       }
 
       .annotation-span {
         display: inline-block;
-        padding: 4px 8px;
-        margin: 4px;
+        padding: 4px 10px;
+        margin: 4px 4px 4px 0;
         border-radius: 4px;
         font-size: 0.85rem;
       }
 
       .level-1 {
-        background-color: #fff3cd;
-        border: 1px solid #ffc107;
-        color: #856404;
+        background-color: #007bff;
+        color: white;
       }
 
       .level-2 {
-        background-color: #f8d7da;
-        border: 1px solid #dc3545;
-        color: #721c24;
+        background-color: #a13927;
+        color: white;
       }
 
-      .pagination-controls {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-top: 20px;
-        padding: 20px;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      .annotation-highlight.level-1 {
+        background-color: #007bff;
+        color: white;
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+
+      .annotation-highlight.level-2 {
+        background-color: #a13927;
+        color: white;
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+
+      .click-hint {
+        text-align: center;
+        margin-top: 10px;
+        color: #6c757d;
+        font-size: 0.9rem;
       }
 
       .loading {
@@ -148,88 +161,100 @@
         color: #721c24;
         padding: 15px;
         border-radius: 8px;
-        border: 1px solid #f5c6cb;
+        margin-bottom: 20px;
       }
 
-      .btn-group {
-        display: flex;
-        gap: 10px;
-      }
+      @media (max-width: 767.98px) {
+        .container {
+          padding: 10px;
+        }
 
-      .annotation-highlight {
-        padding: 2px 4px;
-        border-radius: 3px;
-        font-weight: 500;
-        cursor: help;
-      }
-
-      .annotation-highlight.level-1 {
-        background-color: #fff3cd;
-        border-bottom: 2px solid #ffc107;
-      }
-
-      .annotation-highlight.level-2 {
-        background-color: #f8d7da;
-        border-bottom: 2px solid #dc3545;
+        h1 {
+          font-size: 1.5rem;
+        }
       }
     </style>
   </head>
-  <body>
-    <nav class="navbar">
-      <div class="container-fluid">
-        <span class="navbar-brand">
-          <i class="fas fa-database"></i> AroTranslate Admin
-        </span>
-        <div style="display: flex; gap: 10px">
-          <button
-            onclick="exportAllAnnotations()"
-            class="btn btn-success btn-sm"
-          >
-            <i class="fas fa-download"></i> Export as JSON
-          </button>
-          <a
-            href="{{ url_for('logout') }}"
-            class="btn btn-outline-light btn-sm"
-          >
-            <i class="fas fa-sign-out-alt"></i> Logout
-          </a>
-          <a href="/" class="btn btn-outline-light btn-sm">
-            <i class="fas fa-home"></i> Back to Translator
-          </a>
+  <body style="padding-left: 15px; padding-right: 15px">
+    <header>
+      <nav>
+        <div class="container mt-5">
+          <div class="row d-flex align-items-center">
+            <div class="col-6 text-left">
+              <a href="/" class="no-style"
+                ><h3 class="m-0"><b>AroTranslate</b></h3></a
+              >
+            </div>
+            <div class="col-6 d-flex justify-content-end align-items-center">
+              <button
+                onclick="exportAllAnnotations()"
+                class="btn btn-outline-secondary btn-sm mr-2"
+                style="white-space: nowrap"
+              >
+                <i class="fas fa-download"></i> Export
+              </button>
+              <a href="{{ url_for('logout') }}" class="custom-heading mr-3">
+                <p>Logout</p>
+              </a>
+              <a href="/about" class="custom-heading"><p>About Us</p></a>
+            </div>
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </header>
 
-    <div class="container container-main">
-      <!-- Loading State -->
-      <div id="loadingState" class="loading">
-        <i class="fas fa-spinner fa-spin fa-3x"></i>
-        <p class="mt-3">Loading annotations...</p>
-      </div>
+    <main>
+      <section class="container">
+        <div class="row mb-3">
+          <div class="col-12">
+            <h4>Admin Dashboard</h4>
+            <p class="text-muted">View and manage translation annotations</p>
+          </div>
+        </div>
 
-      <!-- Error State -->
-      <div id="errorState" class="error" style="display: none">
-        <strong>Error:</strong> <span id="errorMessage"></span>
-      </div>
+        <!-- Loading State -->
+        <div id="loadingState" class="loading">
+          <i class="fas fa-spinner fa-spin fa-3x"></i>
+          <p class="mt-3">Loading annotations...</p>
+        </div>
 
-      <!-- Annotations List -->
-      <div id="annotationsList"></div>
+        <!-- Error State -->
+        <div id="errorState" class="error" style="display: none">
+          <strong>Error:</strong> <span id="errorMessage"></span>
+        </div>
 
-      <!-- Pagination Controls -->
-      <div
-        id="paginationControls"
-        class="pagination-controls"
-        style="display: none"
-      >
-        <button class="btn btn-secondary" id="prevBtn" onclick="previousPage()">
-          <i class="fas fa-chevron-left"></i> Previous
-        </button>
-        <span>Page <span id="pageNumber">1</span></span>
-        <button class="btn btn-primary" id="nextBtn" onclick="nextPage()">
-          Next <i class="fas fa-chevron-right"></i>
-        </button>
-      </div>
-    </div>
+        <!-- Annotations List -->
+        <div id="annotationsList"></div>
+
+        <!-- Pagination Controls -->
+        <div class="row mt-4" id="paginationControls" style="display: none">
+          <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+              <button
+                class="btn btn-secondary"
+                id="prevBtn"
+                onclick="previousPage()"
+              >
+                <i class="fas fa-chevron-left"></i> Previous
+              </button>
+              <span class="text-muted"
+                >Page <span id="pageNumber">1</span></span
+              >
+              <button class="btn btn-primary" id="nextBtn" onclick="nextPage()">
+                Next <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p style="text-align: center; color: grey">
+        Made with <span style="color: red" aria-hidden="true">&#10084;</span
+        ><span class="sr-only">love</span>
+      </p>
+    </footer>
 
     <script>
       let currentOffset = 0;
@@ -248,7 +273,7 @@
 
         try {
           const response = await fetch(
-            `/annotations?limit=${limit}&offset=${currentOffset}`
+            `/annotations?limit=${limit}&offset=${currentOffset}`,
           );
 
           if (!response.ok) {
@@ -263,7 +288,7 @@
           // Display annotations
           if (data.annotations.length === 0) {
             annotationsList.innerHTML =
-              '<div class="annotation-card"><p class="text-center text-muted">No annotations found.</p></div>';
+              '<div style="text-align: center; padding: 40px; color: #6c757d;"><p>No annotations found.</p></div>';
           } else {
             data.annotations.forEach((annotation) => {
               annotationsList.appendChild(createAnnotationCard(annotation));
@@ -295,61 +320,54 @@
         card.innerHTML = `
                 <div class="annotation-header">
                     <div>
-                        <div class="annotation-id">MongoDB ID: ${
-                          annotation._id
-                        }</div>
-                        <div class="annotation-id">Private ID: ${
-                          annotation.private_id || "N/A"
-                        }</div>
+                        <div class="annotation-id">ID: ${annotation._id}</div>
                     </div>
-                    <div class="annotation-date">
-                        <i class="far fa-clock"></i> ${date}
-                    </div>
+                    <div class="annotation-date">${date}</div>
                 </div>
 
                 <div class="text-section">
-                    <div class="text-label">
-                        <i class="fas fa-file-alt"></i> Original Text
-                    </div>
+                    <div class="text-label">Original Text</div>
                     <div class="text-content">${escapeHtml(annotation.original_text)}</div>
                 </div>
 
                 <div class="text-section">
-                    <div class="text-label">
-                        <i class="fas fa-language"></i> Translated Text
-                    </div>
+                    <div class="text-label">Translated Text</div>
                     <div class="text-content">${highlightAnnotations(
-          annotation.translated_text,
-          annotation.annotations
-        )}</div>
+                      annotation.translated_text,
+                      annotation.annotations,
+                    )}</div>
                 </div>
 
+                ${
+                  annotation.annotations && annotation.annotations.length > 0
+                    ? `
                 <div class="text-section">
-                    <div class="text-label">
-                        <i class="fas fa-tags"></i> Annotations (${
-                          annotation.annotations.length
-                        })
-                    </div>
-                    <div class="annotations-list">
+                    <div class="text-label">Error Annotations (${
+                      annotation.annotations.length
+                    })</div>
+                    <div>
                         ${annotation.annotations
                           .map(
                             (ann) => `
                             <span class="annotation-span level-${ann.level}">
-                                [${ann.start}:${ann.end}] Level ${ann.level}
+                                Level ${ann.level}: [${ann.start}-${ann.end}]
                             </span>
-                        `
+                        `,
                           )
                           .join("")}
                     </div>
                 </div>
+                `
+                    : ""
+                }
 
-                <div style="text-align: center; margin-top: 15px; color: #6c757d; font-size: 0.9rem;">
-                    <i class="fas fa-hand-pointer"></i> Click to view and edit annotations
+                <div class="click-hint">
+                    Click to view and edit
                 </div>
             `;
 
         // Add click handler to navigate to annotation page
-        card.addEventListener('click', function() {
+        card.addEventListener("click", function () {
           const privateId = this.dataset.privateId;
           const annotationId = this.dataset.id;
           const url = privateId
@@ -374,7 +392,7 @@
 
         // Sort annotations by start position
         const sortedAnnotations = [...annotations].sort(
-          (a, b) => a.start - b.start
+          (a, b) => a.start - b.start,
         );
 
         // Build highlighted HTML
@@ -387,16 +405,15 @@
             result += escapeHtml(text.substring(currentPos, ann.start));
           }
 
-          // Add highlighted annotation
-          const annotatedText = text.substring(ann.start, ann.end);
+          const annotatedText = text.substring(ann.start, ann.end + 1);
           const levelClass = ann.level === 1 ? "level-1" : "level-2";
           result += `<span class="annotation-highlight ${levelClass}" title="Level ${
             ann.level
           } error: position ${ann.start}-${ann.end}">${escapeHtml(
-            annotatedText
+            annotatedText,
           )}</span>`;
 
-          currentPos = ann.end;
+          currentPos = ann.end + 1;
         }
 
         // Add remaining text
@@ -421,7 +438,7 @@
 
       async function exportAllAnnotations() {
         const exportButton = document.querySelector(
-          'button[onclick="exportAllAnnotations()"]'
+          'button[onclick="exportAllAnnotations()"]',
         );
         const originalText = exportButton.innerHTML;
 
@@ -463,7 +480,7 @@
           URL.revokeObjectURL(url);
 
           // Show success message temporarily
-          exportButton.innerHTML = '<i class="fas fa-check"></i> Exported!';
+          exportButton.innerHTML = '<i class="fas fa-check"></i> Exported';
           setTimeout(() => {
             exportButton.innerHTML = originalText;
             exportButton.disabled = false;
@@ -481,5 +498,9 @@
         fetchAnnotations();
       });
     </script>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
   </body>
 </html>
