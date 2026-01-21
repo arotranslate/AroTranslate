@@ -338,6 +338,33 @@ def update_annotation(annotation_id):
         abort(500, description="Failed to update annotation")
 
 
+@app.route("/annotation/<annotation_id>/<private_id>")
+@app.route("/annotation/<annotation_id>")
+def view_annotation(annotation_id, private_id=None):
+    try:
+        annotation = db_repo.get_annotation_by_id(annotation_id)
+
+        if annotation is None:
+            abort(404, description="Annotation not found")
+
+        # Check if private_id is provided and matches
+        can_edit = False
+        if private_id:
+            if annotation.get("private_id") == private_id:
+                can_edit = True
+            else:
+                abort(403, description="Invalid private ID")
+
+        # Convert ObjectId to string for template
+        annotation["_id"] = str(annotation["_id"])
+
+        return render_template("view_annotation.html", annotation=annotation, can_edit=can_edit)
+
+    except Exception as e:
+        logger.error(f"Failed to view annotation {annotation_id}: {e}")
+        abort(500, description="Failed to load annotation")
+
+
 @app.route("/annotations", methods=["POST"])
 @limiter.limit("50 per minute")
 def create_annotation():
