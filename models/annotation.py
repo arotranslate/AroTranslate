@@ -13,7 +13,7 @@ class Annotation:
             raise ValueError("Level must be 1 or 2")
         if self.start < 0 or self.end < 0:
             raise ValueError("Start and end indices must be non-negative")
-        if self.start >= self.end:
+        if self.start > self.end:
             raise ValueError("Start index must be less than end index")
 
     def to_dict(self):
