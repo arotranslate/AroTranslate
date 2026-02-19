@@ -377,6 +377,8 @@ def create_annotation():
     annotations_data = data.get("annotations", [])
     stars = data.get("stars", [])
     feedback = data.get("feedback", [])
+    input_language = data.get("input_language", "").strip()
+    output_language = data.get("output_language", "").strip()
 
     if not original_text or not translated_text:
         abort(400, description="Missing original_text or translated_text")
@@ -406,7 +408,9 @@ def create_annotation():
             translated_text=translated_text,
             annotations=annotations,
             stars=stars,
-            feedback=feedback
+            feedback=feedback,
+            input_language=input_language,
+            output_language=output_language
         )
         return jsonify({
             "id": result["id"],

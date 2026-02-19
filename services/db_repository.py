@@ -58,7 +58,7 @@ class MongoDBRepository:
     def client(self):
         return self._client
 
-    def insert_annotation(self, original_text: str, translated_text: str, annotations: List[Annotation], stars: int, feedback: str):
+    def insert_annotation(self, original_text: str, translated_text: str, annotations: List[Annotation], stars: int, feedback: str, input_language: str, output_language: str):
         try:
             private_id = str(uuid.uuid4())
             document = {
@@ -68,7 +68,9 @@ class MongoDBRepository:
                 "annotations": [ann.to_dict() for ann in annotations],
                 "stars": stars,
                 "feedback": feedback,
-                "created_at": datetime.now(timezone.utc)
+                "created_at": datetime.now(timezone.utc),
+                "input_language": input_language,
+                "output_language": output_language
             }
 
             result = self._annotations_collection.insert_one(document)

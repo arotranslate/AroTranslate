@@ -780,12 +780,17 @@
 
         const annotations = annotationManager.getAllAnnotations();
 
+        const input_lang = document.getElementById('dropdownInputLanguage').textContent.trim();
+        const output_lang = document.getElementById('dropdownOutputLanguage').textContent.trim();
+
         const requestData = {
             original_text: original_text,
             translated_text: translated_text,
             annotations: annotations,
             stars: rating,
-            feedback: feedbackText
+            feedback: feedbackText,
+            input_language: input_lang,
+            output_language: output_lang
         };
 
         fetch('/annotations', {

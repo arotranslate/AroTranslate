@@ -74,22 +74,35 @@
             display: flex;
             flex-direction: row-reverse;
         }
-
-        .rate > label {
-            float: right;
-            width: 1em;
-            overflow: hidden;
-            white-space: nowrap;
-            font-size: 30px;
-            color: #ccc;
+        .rate:not(:checked) > input {
+            position:absolute;
+            top:-9999px;
         }
-
-        .rate > label:before {
+        .rate:not(:checked) > label {
+            float:right;
+            width:1em;
+            overflow:hidden;
+            white-space:nowrap;
+            cursor:pointer;
+            font-size:30px;
+            color:#ccc;
+        }
+        .rate:not(:checked) > label:before {
             content: '★ ';
         }
-
-        .rate > label.filled {
-            color: #ffc700;
+        .rate > input:checked ~ label {
+            color: #ffc700;    
+        }
+        .rate:not(:checked) > label:hover,
+        .rate:not(:checked) > label:hover ~ label {
+            color: #deb217;  
+        }
+        .rate > input:checked + label:hover,
+        .rate > input:checked + label:hover ~ label,
+        .rate > input:checked ~ label:hover,
+        .rate > input:checked ~ label:hover ~ label,
+        .rate > label:hover ~ input:checked ~ label {
+            color: #c59b08;
         }
 
         .badge-edit {
@@ -204,12 +217,37 @@
 
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <h5 id="original-text-label">Original Text</h5>
+                    <h5 id="original-text-label">Original Text ({{ annotation.input_language }})</h5>
                     <div class="text-box">{{ annotation.original_text }}</div>
                 </div>
                 <div class="col-md-6 mb-3">
-                    <h5 id="translated-text-label">Translated Text</h5>
+                    <h5 id="translated-text-label">Translated Text ({{ annotation.output_language }})</h5>
                     <div class="text-box" id="translatedText" {% if can_edit %}contenteditable="true" onbeforeinput="return false"{% endif %}>{{ annotation.translated_text }}</div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    <div class="form-group textarea-container">
+                        <label for="feedback" class="sr-only">Feedback</label>
+                        <textarea id="feedback" class="form-control" rows="3" placeholder="Your feedback is welcome!">{{ annotation.feedback }}</textarea>
+                    </div>
+                </div>
+
+                <div class="col-md-4 d-flex align-items-center midpoint-centered-div">
+                    <div style="margin-right: 10px;">Rate your experience:</div>
+                    <div id="stars" class="rate">
+                        <input type="radio" id="star5" name="rate" value="5" />
+                        <label for="star5" title="5 stars"></label>
+                        <input type="radio" id="star4" name="rate" value="4" />
+                        <label for="star4" title="4 stars"></label>
+                        <input type="radio" id="star3" name="rate" value="3" />
+                        <label for="star3" title="3 stars"></label>
+                        <input type="radio" id="star2" name="rate" value="2" />
+                        <label for="star2" title="2 stars"></label>
+                        <input type="radio" id="star1" name="rate" value="1" />
+                        <label for="star1" title="1 star"></label>
+                    </div>
                 </div>
             </div>
 
@@ -237,31 +275,6 @@
                         </li>
                         {% endfor %}
                     </ul>
-                </div>
-            </div>
-            {% endif %}
-
-            {% if annotation.stars %}
-            <div class="row mt-4">
-                <div class="col-12">
-                    <h5 id="rating-label">Rating</h5>
-                    <div class="rate">
-                        {% for i in range(5, 0, -1) %}
-                        <label {% if i <= annotation.stars|int %}class="filled"{% endif %} title="{{ i }} star{% if i > 1 %}s{% endif %}" id="star-label-{{ i }}"></label>
-                        {% endfor %}
-                    </div>
-                    <div style="clear: both;"></div>
-                </div>
-            </div>
-            {% endif %}
-
-            {% if annotation.feedback and annotation.feedback|length > 0 %}
-            <div class="row mt-4">
-                <div class="col-12">
-                    <h5 id="feedback-label">Feedback</h5>
-                    <div class="alert alert-info">
-                        {{ annotation.feedback }}
-                    </div>
                 </div>
             </div>
             {% endif %}
@@ -310,7 +323,9 @@
 
             const requestData = {
                 private_id: "{{ annotation.private_id }}",
-                annotations: annotations
+                annotations: annotations,
+                stars: document.querySelector('input[name="rate"]:checked') ? document.querySelector('input[name="rate"]:checked').value : 0,
+                feedback: document.getElementById('feedback').value
             };
 
             fetch('/annotations/{{ annotation._id }}', {
@@ -493,6 +508,16 @@
                 var $dropdownToggle = $this.closest('.dropdown').find('.dropdown-toggle');
                 $dropdownToggle.text($this.text());
             });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const stars = {{ annotation.stars|default(0) }};
+            if (stars > 0) {
+                const starInput = document.getElementById('star' + stars);
+                if (starInput) {
+                    starInput.checked = true;
+                }
+            }
         });
     </script>
 </body>
