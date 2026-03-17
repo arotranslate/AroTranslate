@@ -435,4 +435,5 @@ class AnnotationManager {
   getText() {
     return this.plainText;
   }
+
 }

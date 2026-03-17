@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>View Annotation | AroTranslate</title>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
@@ -242,10 +243,11 @@
             </div>
 
             {% if can_edit %}
-            <div class="row mt-3">
+            <div id="turnstile-container" class="mt-3"></div>
+            <div class="row mt-2">
                 <div class="col-12">
                     <button id="updateAnnotations" class="btn btn-success"><span id="update-button-text">Update Annotations</span></button>
-                    <small class="text-muted ml-2" id="right-click-hint">Right-click on text to add or modify error annotations</small>
+                    <small class="text-muted ml-2" id="right-click-hint"><i class="fas fa-info-circle"></i> To annotate errors: select text in the translation, then right-click to choose an error level.</small>
                 </div>
             </div>
             {% endif %}
@@ -305,42 +307,52 @@
 
         {% if can_edit %}
         // Update annotations button
+        let _turnstileWidgetId = null;
+
         $("#updateAnnotations").on("click", function () {
-            const translated_text = annotationManager.getText();
-            const annotations = annotationManager.getAllAnnotations();
+            if (_turnstileWidgetId !== null) {
+                turnstile.reset(_turnstileWidgetId);
+                return;
+            }
+            _turnstileWidgetId = turnstile.render('#turnstile-container', {
+                sitekey: '{{ turnstile_site_key }}',
+                callback: function (token) {
+                    const translated_text = annotationManager.getText();
+                    const annotations = annotationManager.getAllAnnotations();
 
-            const requestData = {
-                private_id: "{{ annotation.private_id }}",
-                annotations: annotations,
-                stars: document.querySelector('input[name="rate"]:checked') ? document.querySelector('input[name="rate"]:checked').value : 0,
-                feedback: document.getElementById('feedback').value
-            };
+                    const requestData = {
+                        private_id: "{{ annotation.private_id }}",
+                        annotations: annotations,
+                        stars: document.querySelector('input[name="rate"]:checked') ? document.querySelector('input[name="rate"]:checked').value : 0,
+                        feedback: document.getElementById('feedback').value,
+                        turnstile_token: token
+                    };
 
-            fetch('/annotations/{{ annotation._id }}', {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                const messages = {
-                    "ron": "Adnotările au fost actualizate cu succes!",
-                    "rup": "Adnotarilji s-actualizar cu successu!",
-                    "en": "Annotations updated successfully!"
-                };
-                alert(messages[currentLang]);
-                location.reload();
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                const messages = {
-                    "ron": "Eroare la actualizarea adnotărilor.",
-                    "rup": "Eroarã la actualizarea a adnotariljei.",
-                    "en": "Error updating annotations."
-                };
-                alert(messages[currentLang]);
+                    fetch('/annotations/{{ annotation._id }}', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(requestData)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        const messages = {
+                            "ron": "Adnotările au fost actualizate cu succes!",
+                            "rup": "Adnotarilji s-actualizar cu successu!",
+                            "en": "Annotations updated successfully!"
+                        };
+                        alert(messages[currentLang]);
+                        location.reload();
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        const messages = {
+                            "ron": "Eroare la actualizarea adnotărilor.",
+                            "rup": "Eroarã la actualizarea a adnotariljei.",
+                            "en": "Error updating annotations."
+                        };
+                        alert(messages[currentLang]);
+                    });
+                }
             });
         });
         {% endif %}
@@ -358,7 +370,7 @@
                     "original-text-label": "Text Original",
                     "translated-text-label": "Text Tradus",
                     "update-button-text": "Actualizează Adnotările",
-                    "right-click-hint": "Clic dreapta pe text pentru a adăuga sau modifica adnotări de eroare",
+                    "right-click-hint": "Pentru a adnota erori: selectați text din traducere, apoi clic dreapta pentru a alege nivelul erorii.",
                     "error-annotations-label": "Adnotări de Eroare",
                     "position-label": "Poziție:",
                     "text-label": "Text:",
@@ -381,7 +393,7 @@
                     "original-text-label": "Textu Original",
                     "translated-text-label": "Textu Apridutsit",
                     "update-button-text": "Actualizeadzã Adnotarilji",
-                    "right-click-hint": "Clic dreptu pi textu trã s-adavgi icã s-alãxeshti adnotari di eroari",
+                    "right-click-hint": "Trã s-adnotezi eroari: aledzi textu dit apridutsiri, soi clic dreptu trã s-aledzi nivellu a eroariljei.",
                     "error-annotations-label": "Adnotari di Eroari",
                     "position-label": "Positsia:",
                     "text-label": "Textu:",
@@ -404,7 +416,7 @@
                     "original-text-label": "Original Text",
                     "translated-text-label": "Translated Text",
                     "update-button-text": "Update Annotations",
-                    "right-click-hint": "Right-click on text to add or modify error annotations",
+                    "right-click-hint": "To annotate errors: select text in the translation, then right-click to choose an error level.",
                     "error-annotations-label": "Error Annotations",
                     "position-label": "Position:",
                     "text-label": "Text:",

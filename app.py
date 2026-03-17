@@ -1,5 +1,6 @@
 import logging
 import os
+import requests as http_requests
 from flask import Flask, jsonify, abort, request, render_template, redirect, url_for, flash
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -32,6 +33,8 @@ if not Config.SECRET_KEY:
     raise ValueError("SECRET_KEY environment variable must be set")
 
 app.config['SECRET_KEY'] = Config.SECRET_KEY
+app.config['TURNSTILE_SITE_KEY'] = Config.TURNSTILE_SITE_KEY
+app.config['TURNSTILE_SECRET_KEY'] = Config.TURNSTILE_SECRET_KEY
 
 if Config.TALISMAN:
     logger.info("Using Talisman...")
@@ -55,6 +58,18 @@ login_manager.login_message = 'Please log in to access this page.'
 @login_manager.user_loader
 def load_user(user_id):
     return db_repo.get_user_by_id(user_id)
+
+def verify_turnstile(token):
+    secret = app.config.get("TURNSTILE_SECRET_KEY")
+    if not secret:
+        return True  # skip verification if not configured
+    resp = http_requests.post(
+        "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+        data={"secret": secret, "response": token},
+        timeout=5,
+    )
+    return resp.json().get("success", False)
+
 
 def initialize_default_admin():
     try:
@@ -90,7 +105,7 @@ initialize_default_admin()
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", turnstile_site_key=app.config["TURNSTILE_SITE_KEY"])
 
 
 @app.route("/health")
@@ -277,6 +292,9 @@ def update_annotation(annotation_id):
     if not data:
         abort(400, description="Invalid JSON")
 
+    if not verify_turnstile(data.get("turnstile_token", "")):
+        abort(400, description="CAPTCHA verification failed")
+
     private_id = data.get("private_id", "").strip()
     if not private_id:
         abort(400, description="Missing private_id")
@@ -358,7 +376,12 @@ def view_annotation(annotation_id, private_id=None):
         # Convert ObjectId to string for template
         annotation["_id"] = str(annotation["_id"])
 
-        return render_template("view_annotation.html", annotation=annotation, can_edit=can_edit)
+        return render_template(
+            "view_annotation.html",
+            annotation=annotation,
+            can_edit=can_edit,
+            turnstile_site_key=app.config["TURNSTILE_SITE_KEY"],
+        )
 
     except Exception as e:
         logger.error(f"Failed to view annotation {annotation_id}: {e}")
@@ -472,6 +495,9 @@ def create_annotation():
     data = request.get_json()
     if not data:
         abort(400, description="Invalid JSON")
+
+    if not verify_turnstile(data.get("turnstile_token", "")):
+        abort(400, description="CAPTCHA verification failed")
 
     original_text = data.get("original_text", "").strip()
     translated_text = data.get("translated_text", "").strip()

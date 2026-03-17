@@ -14,6 +14,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="AroTranslate: Aromanian Translation Tool">
     <meta name="twitter:description" content="Translate between Aromanian, Romanian, and English with AroTranslate, the first comprehensive Aromanian translation system.">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
@@ -342,6 +343,9 @@
                         </button>
                     </div>
                     <p class="vintage-text text-right" id="translate_time"></p>
+                    <small id="annotation-hint" style="display:none; color: #6c757d;">
+                        <i class="fas fa-info-circle"></i> <span id="annotation-hint-text">To annotate errors: select text in the translation, then right-click to choose an error level.</span>
+                    </small>
                 </div>
             </div>
 
@@ -373,6 +377,8 @@
                 </div>
             </div>
 
+            <div id="turnstile-container" class="mb-2"></div>
+
             <div class="row">
                 <div class="col-md-12 mb-3">
                     <button id="submitFeedback" class="btn btn-success btn-sm">Submit Feedback</button>
@@ -395,7 +401,7 @@
                 </div>
                 <div class="col-md-6 mb-3">
                     <div class="form-group">
-                        <label for="private-url">Private URL:</label>
+                        <label for="private-url">Editable URL:</label>
                         <div class="input-group">
                             <input type="text" id="private-url" class="form-control" readonly>
                             <div class="input-group-append">
@@ -467,7 +473,8 @@
                     'star4': '4 stele',
                     'star5': '5 stele',
                     "public-url": "URL Public",
-                    "private-url": "URL Privat",
+                    "private-url": "URL Editabil",
+                    "annotation-hint-text": "Pentru a adnota erori: selectați text din traducere, apoi clic dreapta pentru a alege nivelul erorii.",
                 },
                 "rup": {
                     "translate-button": "Apridutse",
@@ -498,7 +505,8 @@
                     'star4': '4 steali',
                     'star5': '5 steali',
                     "public-url": "URL Publicu",
-                    "private-url": "URL Privati",
+                    "private-url": "URL Editabil",
+                    "annotation-hint-text": "Trã s-adnotezi eroari: aledzi textu dit apridutsiri, soi clic dreptu trã s-aledzi nivellu a eroariljei.",
                 },
                 "en": {
                     "translate-button": "Translate",
@@ -529,11 +537,12 @@
                     'star4': '4 stars',
                     'star5': '5 stars',
                     "public-url": "Public URL",
-                    "private-url": "Private URL",
+                    "private-url": "Editable URL",
+                    "annotation-hint-text": "To annotate errors: select text in the translation, then right-click to choose an error level.",
                 }
             }
         
-            ids = ["translate-button", "language-info1", "language-info2", "ron-option1", "rup-option1", "ron-option2", "rup-option2", "dropdownInputLanguage", "dropdownOutputLanguage", "inputText", "about-us", "eng-option1", "eng-option2", "what-is", "usage", "p1", "p2", "p3", "disclaimer", "feedback", "email"]
+            ids = ["translate-button", "language-info1", "language-info2", "ron-option1", "rup-option1", "ron-option2", "rup-option2", "dropdownInputLanguage", "dropdownOutputLanguage", "inputText", "about-us", "eng-option1", "eng-option2", "what-is", "usage", "p1", "p2", "p3", "disclaimer", "feedback", "email", "annotation-hint-text"]
             for (var i = 0; i < ids.length; i++){
                 if (ids[i] == "inputText" || ids[i] == "feedback" || ids[i] == "email"){
                     var thing = document.getElementById(ids[i])
@@ -698,6 +707,7 @@
                     annotationManager.setText(data.translated_text);
                     document.getElementById('translate_time').textContent = data.translate_time + ' s';
                     document.getElementById('translate_time').style.display = 'block'; // Ensure it is visible
+                    document.getElementById('annotation-hint').style.display = 'block';
 
                     if ((outputLanguage.trim() === "Aromanian" | outputLanguage.trim() === "Aromână" | outputLanguage.trim() === "Armãnã") & document.getElementById('diaro').style.textDecoration === "underline") {
                         convert_diacritics();
@@ -744,51 +754,60 @@
         menuSelector: '.error-right-click-menu'
     });
 
+    let _turnstileWidgetId = null;
+
     $("#submitFeedback").on("click", function () {
-        const feedbackText = document.getElementById("feedback").value;
-        const rating = document.querySelector('input[name="rate"]:checked') ? document.querySelector('input[name="rate"]:checked').value : null;
-        const email = document.getElementById("email").value.trim();
+        if (_turnstileWidgetId !== null) {
+            turnstile.reset(_turnstileWidgetId);
+            return;
+        }
+        _turnstileWidgetId = turnstile.render('#turnstile-container', {
+            sitekey: '{{ turnstile_site_key }}',
+            callback: function (token) {
+                const feedbackText = document.getElementById("feedback").value;
+                const rating = document.querySelector('input[name="rate"]:checked') ? document.querySelector('input[name="rate"]:checked').value : null;
+                const email = document.getElementById("email").value.trim();
 
-        const original_text = document.getElementById("inputText").value;
-        const translated_text = annotationManager.getText();
+                const original_text = document.getElementById("inputText").value;
+                const translated_text = annotationManager.getText();
+                const annotations = annotationManager.getAllAnnotations();
 
-        const annotations = annotationManager.getAllAnnotations();
+                const input_lang = document.getElementById('dropdownInputLanguage').textContent.trim();
+                const output_lang = document.getElementById('dropdownOutputLanguage').textContent.trim();
 
-        const input_lang = document.getElementById('dropdownInputLanguage').textContent.trim();
-        const output_lang = document.getElementById('dropdownOutputLanguage').textContent.trim();
+                const requestData = {
+                    original_text: original_text,
+                    translated_text: translated_text,
+                    annotations: annotations,
+                    stars: rating,
+                    feedback: feedbackText,
+                    input_language: input_lang,
+                    output_language: output_lang,
+                    email: email || null,
+                    turnstile_token: token
+                };
 
-        const requestData = {
-            original_text: original_text,
-            translated_text: translated_text,
-            annotations: annotations,
-            stars: rating,
-            feedback: feedbackText,
-            input_language: input_lang,
-            output_language: output_lang,
-            email: email || null
-        };
+                fetch('/annotations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const publicUrl = document.location.origin + '/annotation/' + data.id;
+                    const privateUrl = document.location.origin + '/annotation/' + data.id + "/" + data.private_id;
 
-        fetch('/annotations', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            const publicUrl = document.location.origin + '/annotation/' + data.id;
-            const privateUrl = document.location.origin + '/annotation/' + data.id + "/" + data.private_id;
-
-            document.querySelector('#public-url').value = publicUrl;
-            document.querySelector('#private-url').value = privateUrl;
-            document.querySelector('#public-url-link').href = publicUrl;
-            document.querySelector('#private-url-link').href = privateUrl;
-            document.querySelector('.hidden-urls').style.display = 'flex';
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error submitting feedback.');
+                    document.querySelector('#public-url').value = publicUrl;
+                    document.querySelector('#private-url').value = privateUrl;
+                    document.querySelector('#public-url-link').href = publicUrl;
+                    document.querySelector('#private-url-link').href = privateUrl;
+                    document.querySelector('.hidden-urls').style.display = 'flex';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error submitting feedback.');
+                });
+            }
         });
     });
     </script>
