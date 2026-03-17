@@ -6,11 +6,12 @@ class Annotation:
     """Span error annotation model for NLP translation errors"""
     start: int
     end: int
-    level: int  # 1 or 2
+    level: str  # Error level name (e.g., "minor", "major")
 
     def __post_init__(self):
-        if self.level not in [1, 2]:
-            raise ValueError("Level must be 1 or 2")
+        if not isinstance(self.level, str) or not self.level.strip():
+            raise ValueError("Level must be a non-empty string")
+        self.level = self.level.strip().lower()
         if self.start < 0 or self.end < 0:
             raise ValueError("Start and end indices must be non-negative")
         if self.start > self.end:

@@ -13,6 +13,12 @@ logger = logging.getLogger(__name__)
 
 ANNOTATIONS_COLLECTION = "translation_annotations"
 USERS_COLLECTION = "users"
+ERROR_LEVELS_COLLECTION = "error_levels"
+
+DEFAULT_ERROR_LEVELS = [
+    {"name": "minor", "color": "#007bff", "order": 1},
+    {"name": "major", "color": "#a13927", "order": 2}
+]
 
 
 class MongoDBRepository:
@@ -22,6 +28,7 @@ class MongoDBRepository:
     _db = None
     _annotations_collection = None
     _users_collection = None
+    _error_levels_collection = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -43,8 +50,14 @@ class MongoDBRepository:
 
             self._annotations_collection = self._db[ANNOTATIONS_COLLECTION]
             self._users_collection = self._db[USERS_COLLECTION]
+            self._error_levels_collection = self._db[ERROR_LEVELS_COLLECTION]
 
             self._users_collection.create_index("username", unique=True)
+            self._error_levels_collection.create_index("name", unique=True)
+            self._error_levels_collection.create_index("order")
+
+            # Seed default error levels if collection is empty
+            self._seed_default_error_levels()
 
             logger.info(f"Successfully connected to MongoDB database: {Config.MONGODB_DATABASE}")
         except ConnectionFailure as e:
@@ -58,7 +71,7 @@ class MongoDBRepository:
     def client(self):
         return self._client
 
-    def insert_annotation(self, original_text: str, translated_text: str, annotations: List[Annotation], stars: int, feedback: str, input_language: str, output_language: str):
+    def insert_annotation(self, original_text: str, translated_text: str, annotations: List[Annotation], stars: int, feedback: str, input_language: str, output_language: str, email: str = None):
         try:
             private_id = str(uuid.uuid4())
             document = {
@@ -70,7 +83,8 @@ class MongoDBRepository:
                 "feedback": feedback,
                 "created_at": datetime.now(timezone.utc),
                 "input_language": input_language,
-                "output_language": output_language
+                "output_language": output_language,
+                "email": email
             }
 
             result = self._annotations_collection.insert_one(document)
@@ -184,6 +198,107 @@ class MongoDBRepository:
         except Exception as e:
             logger.error(f"Failed to retrieve user by username: {e}")
             return None
+
+    # Error Levels Methods
+    def _seed_default_error_levels(self):
+        """Seed default error levels if the collection is empty"""
+        try:
+            if self._error_levels_collection.count_documents({}) == 0:
+                self._error_levels_collection.insert_many(DEFAULT_ERROR_LEVELS)
+                logger.info("Seeded default error levels")
+        except Exception as e:
+            logger.error(f"Failed to seed default error levels: {e}")
+
+    def get_all_error_levels(self):
+        """Get all error levels sorted by order"""
+        try:
+            cursor = self._error_levels_collection.find().sort("order", 1)
+            levels = []
+            for level in cursor:
+                level["_id"] = str(level["_id"])
+                levels.append(level)
+            return levels
+        except Exception as e:
+            logger.error(f"Failed to retrieve error levels: {e}")
+            raise
+
+    def get_error_level_by_name(self, name: str):
+        """Get a single error level by name"""
+        try:
+            level = self._error_levels_collection.find_one({"name": name})
+            if level:
+                level["_id"] = str(level["_id"])
+            return level
+        except Exception as e:
+            logger.error(f"Failed to retrieve error level: {e}")
+            raise
+
+    def create_error_level(self, name: str, color: str, order: int):
+        """Create a new error level"""
+        try:
+            document = {
+                "name": name,
+                "color": color,
+                "order": order
+            }
+            result = self._error_levels_collection.insert_one(document)
+            logger.info(f"Created error level: {name}")
+            return {
+                "id": str(result.inserted_id),
+                "name": name,
+                "color": color,
+                "order": order
+            }
+        except Exception as e:
+            logger.error(f"Failed to create error level: {e}")
+            raise
+
+    def update_error_level(self, level_id: str, name: str = None, color: str = None, order: int = None):
+        """Update an existing error level"""
+        try:
+            update_fields = {}
+            if name is not None:
+                update_fields["name"] = name
+            if color is not None:
+                update_fields["color"] = color
+            if order is not None:
+                update_fields["order"] = order
+
+            if not update_fields:
+                return {"matched": False, "modified": False}
+
+            result = self._error_levels_collection.update_one(
+                {"_id": ObjectId(level_id)},
+                {"$set": update_fields}
+            )
+
+            logger.info(f"Updated error level {level_id}: matched={result.matched_count}, modified={result.modified_count}")
+            return {
+                "matched": result.matched_count > 0,
+                "modified": result.modified_count > 0
+            }
+        except Exception as e:
+            logger.error(f"Failed to update error level: {e}")
+            raise
+
+    def delete_error_level(self, level_id: str):
+        """Delete an error level"""
+        try:
+            result = self._error_levels_collection.delete_one({"_id": ObjectId(level_id)})
+            logger.info(f"Deleted error level {level_id}: deleted={result.deleted_count}")
+            return {"deleted": result.deleted_count > 0}
+        except Exception as e:
+            logger.error(f"Failed to delete error level: {e}")
+            raise
+
+    def get_error_level_names(self):
+        """Get list of valid error level names"""
+        try:
+            levels = self.get_all_error_levels()
+            return [level["name"] for level in levels]
+        except Exception as e:
+            logger.error(f"Failed to get error level names: {e}")
+            return []
 
 
 def get_db_repository():

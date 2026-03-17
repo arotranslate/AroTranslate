@@ -365,6 +365,107 @@ def view_annotation(annotation_id, private_id=None):
         abort(500, description="Failed to load annotation")
 
 
+# Error Levels API endpoints
+@app.route("/error-levels", methods=["GET"])
+@limiter.limit("100 per minute")
+def get_error_levels():
+    """Get all error levels (public endpoint for frontend)"""
+    try:
+        levels = db_repo.get_all_error_levels()
+        return jsonify({"error_levels": levels})
+    except Exception as e:
+        logger.error(f"Failed to retrieve error levels: {e}")
+        abort(500, description="Failed to retrieve error levels")
+
+
+@app.route("/error-levels", methods=["POST"])
+@login_required
+@limiter.limit("50 per minute")
+def create_error_level():
+    """Create a new error level (admin only)"""
+    data = request.get_json()
+    if not data:
+        abort(400, description="Invalid JSON")
+
+    name = data.get("name", "").strip().lower()
+    color = data.get("color", "").strip()
+    order = data.get("order")
+
+    if not name or not color:
+        abort(400, description="Name and color are required")
+
+    if not color.startswith("#") or len(color) not in [4, 7]:
+        abort(400, description="Invalid color format. Use hex color (e.g., #007bff)")
+
+    if order is None:
+        # Auto-assign order as max + 1
+        existing = db_repo.get_all_error_levels()
+        order = max([l["order"] for l in existing], default=0) + 1
+
+    try:
+        result = db_repo.create_error_level(name=name, color=color, order=order)
+        return jsonify(result), 201
+    except Exception as e:
+        if "duplicate key" in str(e).lower():
+            abort(409, description=f"Error level '{name}' already exists")
+        logger.error(f"Failed to create error level: {e}")
+        abort(500, description="Failed to create error level")
+
+
+@app.route("/error-levels/<level_id>", methods=["PUT"])
+@login_required
+@limiter.limit("50 per minute")
+def update_error_level(level_id):
+    """Update an error level (admin only)"""
+    data = request.get_json()
+    if not data:
+        abort(400, description="Invalid JSON")
+
+    name = data.get("name")
+    color = data.get("color")
+    order = data.get("order")
+
+    if name is not None:
+        name = name.strip().lower()
+    if color is not None:
+        color = color.strip()
+        if not color.startswith("#") or len(color) not in [4, 7]:
+            abort(400, description="Invalid color format. Use hex color (e.g., #007bff)")
+
+    try:
+        result = db_repo.update_error_level(level_id=level_id, name=name, color=color, order=order)
+        if not result["matched"]:
+            abort(404, description="Error level not found")
+        return jsonify({"status": "success", "modified": result["modified"]})
+    except Exception as e:
+        if "duplicate key" in str(e).lower():
+            abort(409, description=f"Error level '{name}' already exists")
+        logger.error(f"Failed to update error level: {e}")
+        abort(500, description="Failed to update error level")
+
+
+@app.route("/error-levels/<level_id>", methods=["DELETE"])
+@login_required
+@limiter.limit("50 per minute")
+def delete_error_level(level_id):
+    """Delete an error level (admin only)"""
+    try:
+        result = db_repo.delete_error_level(level_id=level_id)
+        if not result["deleted"]:
+            abort(404, description="Error level not found")
+        return jsonify({"status": "success"})
+    except Exception as e:
+        logger.error(f"Failed to delete error level: {e}")
+        abort(500, description="Failed to delete error level")
+
+
+@app.route("/admin/error-levels")
+@login_required
+def admin_error_levels():
+    """Admin page for managing error levels"""
+    return render_template("admin_error_levels.html")
+
+
 @app.route("/annotations", methods=["POST"])
 @limiter.limit("50 per minute")
 def create_annotation():
@@ -379,6 +480,9 @@ def create_annotation():
     feedback = data.get("feedback", [])
     input_language = data.get("input_language", "").strip()
     output_language = data.get("output_language", "").strip()
+    email = data.get("email")
+    if email:
+        email = email.strip() or None
 
     if not original_text or not translated_text:
         abort(400, description="Missing original_text or translated_text")
@@ -410,7 +514,8 @@ def create_annotation():
             stars=stars,
             feedback=feedback,
             input_language=input_language,
-            output_language=output_language
+            output_language=output_language,
+            email=email
         )
         return jsonify({
             "id": result["id"],

@@ -92,6 +92,12 @@
         font-size: 0.9rem;
       }
 
+      .annotation-email {
+        font-size: 0.85rem;
+        margin-top: 4px;
+        color: #6c757d;
+      }
+
       .text-section {
         margin-bottom: 15px;
       }
@@ -117,30 +123,13 @@
         margin: 4px 4px 4px 0;
         border-radius: 4px;
         font-size: 0.85rem;
-      }
-
-      .level-1 {
-        background-color: #007bff;
         color: white;
       }
 
-      .level-2 {
-        background-color: #a13927;
-        color: white;
-      }
-
-      .annotation-highlight.level-1 {
-        background-color: #007bff;
-        color: white;
+      .annotation-highlight {
         padding: 2px 4px;
         border-radius: 3px;
-      }
-
-      .annotation-highlight.level-2 {
-        background-color: #a13927;
         color: white;
-        padding: 2px 4px;
-        border-radius: 3px;
       }
 
       .click-hint {
@@ -193,6 +182,9 @@
               >
                 <i class="fas fa-download"></i> Export
               </button>
+              <a href="{{ url_for('admin_error_levels') }}" class="custom-heading mr-3">
+                <p>Error Levels</p>
+              </a>
               <a href="{{ url_for('logout') }}" class="custom-heading mr-3">
                 <p>Logout</p>
               </a>
@@ -259,6 +251,48 @@
     <script>
       let currentOffset = 0;
       const limit = 100;
+      let errorLevels = [];
+      let errorLevelColors = {};
+
+      async function fetchErrorLevels() {
+        try {
+          const response = await fetch('/error-levels');
+          if (response.ok) {
+            const data = await response.json();
+            errorLevels = data.error_levels || [];
+            // Build color lookup
+            errorLevels.forEach(level => {
+              errorLevelColors[level.name] = level.color;
+            });
+            injectDynamicStyles();
+          }
+        } catch (error) {
+          console.error('Failed to fetch error levels:', error);
+        }
+      }
+
+      function injectDynamicStyles() {
+        const existingStyle = document.getElementById('dynamic-level-styles');
+        if (existingStyle) existingStyle.remove();
+
+        const style = document.createElement('style');
+        style.id = 'dynamic-level-styles';
+        let css = '';
+        errorLevels.forEach(level => {
+          css += `
+            .annotation-span.level-${level.name},
+            .annotation-highlight.level-${level.name} {
+              background-color: ${level.color};
+            }
+          `;
+        });
+        style.textContent = css;
+        document.head.appendChild(style);
+      }
+
+      function getLevelColor(levelName) {
+        return errorLevelColors[levelName] || '#6c757d';
+      }
 
       async function fetchAnnotations() {
         const loadingState = document.getElementById("loadingState");
@@ -321,6 +355,7 @@
                 <div class="annotation-header">
                     <div>
                         <div class="annotation-id">ID: ${annotation._id}</div>
+                        ${annotation.email ? `<div class="annotation-email"><i class="fas fa-envelope" style="color: #6c757d;"></i> ${escapeHtml(annotation.email)}</div>` : ""}
                     </div>
                     <div class="annotation-date">${date}</div>
                 </div>
@@ -350,7 +385,7 @@
                           .map(
                             (ann) => `
                             <span class="annotation-span level-${ann.level}">
-                                Level ${ann.level}: [${ann.start}-${ann.end}]
+                                ${ann.level}: [${ann.start}-${ann.end}]
                             </span>
                         `,
                           )
@@ -406,10 +441,8 @@
           }
 
           const annotatedText = text.substring(ann.start, ann.end + 1);
-          const levelClass = ann.level === 1 ? "level-1" : "level-2";
-          result += `<span class="annotation-highlight ${levelClass}" title="Level ${
-            ann.level
-          } error: position ${ann.start}-${ann.end}">${escapeHtml(
+          const levelClass = `level-${ann.level}`;
+          result += `<span class="annotation-highlight ${levelClass}" title="${ann.level} error: position ${ann.start}-${ann.end}">${escapeHtml(
             annotatedText,
           )}</span>`;
 
@@ -494,7 +527,8 @@
       }
 
       // Load annotations on page load
-      document.addEventListener("DOMContentLoaded", () => {
+      document.addEventListener("DOMContentLoaded", async () => {
+        await fetchErrorLevels();
         fetchAnnotations();
       });
     </script>

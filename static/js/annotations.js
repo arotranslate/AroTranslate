@@ -17,6 +17,7 @@ class AnnotationManager {
     this.pendingSelection = null;     // Selection waiting for menu action
     this.onChangeCallback = config.onChange || null;
     this.initialAnnotations = config.initialAnnotations || [];
+    this.errorLevels = [];            // Array of {name, color, order}
 
     this.init();
   }
@@ -24,12 +25,15 @@ class AnnotationManager {
   /**
    * Initialize the manager
    */
-  init() {
+  async init() {
     const container = document.getElementById(this.targetElementId);
     if (!container) {
       console.error(`AnnotationManager: Element #${this.targetElementId} not found`);
       return;
     }
+
+    // Fetch error levels from API
+    await this.fetchErrorLevels();
 
     // Store the plain text content
     this.plainText = container.textContent;
@@ -41,6 +45,96 @@ class AnnotationManager {
     }
 
     this.setupEventListeners();
+  }
+
+  /**
+   * Fetch error levels from the API
+   */
+  async fetchErrorLevels() {
+    try {
+      const response = await fetch('/error-levels');
+      if (response.ok) {
+        const data = await response.json();
+        this.errorLevels = data.error_levels || [];
+        this.buildContextMenu();
+        this.injectStyles();
+      }
+    } catch (error) {
+      console.error('Failed to fetch error levels:', error);
+      // Fallback to default levels
+      this.errorLevels = [
+        { name: 'minor', color: '#007bff', order: 1 },
+        { name: 'major', color: '#a13927', order: 2 }
+      ];
+      this.buildContextMenu();
+      this.injectStyles();
+    }
+  }
+
+  /**
+   * Build context menu dynamically based on error levels
+   */
+  buildContextMenu() {
+    const menu = document.querySelector(this.menuSelector);
+    if (!menu) return;
+
+    // Clear existing menu items
+    menu.innerHTML = '';
+
+    // Add menu items for each error level
+    this.errorLevels.forEach(level => {
+      const li = document.createElement('li');
+      li.setAttribute('data-action', `error-${level.name}`);
+      li.setAttribute('data-level', level.name);
+      li.style.backgroundColor = level.color;
+      li.style.color = 'white';
+      li.textContent = level.name.charAt(0).toUpperCase() + level.name.slice(1);
+      menu.appendChild(li);
+    });
+
+    // Add clear error option
+    const clearLi = document.createElement('li');
+    clearLi.setAttribute('data-action', 'error-none');
+    clearLi.id = 'clear-error';
+    clearLi.style.color = 'black';
+    clearLi.textContent = 'Clear Error';
+    menu.appendChild(clearLi);
+  }
+
+  /**
+   * Inject dynamic CSS styles for error level highlights
+   */
+  injectStyles() {
+    // Remove any existing dynamic styles
+    const existingStyle = document.getElementById('annotation-dynamic-styles');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+
+    // Create new style element
+    const style = document.createElement('style');
+    style.id = 'annotation-dynamic-styles';
+
+    let css = '';
+    this.errorLevels.forEach(level => {
+      css += `
+        .highlight-error-level-${level.name} {
+          background-color: ${level.color};
+          color: white;
+        }
+      `;
+    });
+
+    style.textContent = css;
+    document.head.appendChild(style);
+  }
+
+  /**
+   * Get color for a specific level
+   */
+  getLevelColor(levelName) {
+    const level = this.errorLevels.find(l => l.name === levelName);
+    return level ? level.color : '#6c757d';
   }
 
   /**
@@ -161,25 +255,21 @@ class AnnotationManager {
     const menu = document.querySelector(this.menuSelector);
     if (!menu) return;
 
-    const menuItems = menu.querySelectorAll('li');
-    menuItems.forEach(item => {
-      item.addEventListener('click', () => {
-        const action = item.getAttribute('data-action');
+    // Use event delegation for dynamically created menu items
+    menu.addEventListener('click', (event) => {
+      const item = event.target.closest('li');
+      if (!item) return;
 
-        switch (action) {
-          case 'error-1':
-            this.addAnnotation(1);
-            break;
-          case 'error-2':
-            this.addAnnotation(2);
-            break;
-          case 'error-none':
-            this.clearAnnotation();
-            break;
-        }
+      const action = item.getAttribute('data-action');
+      const level = item.getAttribute('data-level');
 
-        menu.style.display = 'none';
-      });
+      if (action === 'error-none') {
+        this.clearAnnotation();
+      } else if (level) {
+        this.addAnnotation(level);
+      }
+
+      menu.style.display = 'none';
     });
   }
 
@@ -283,9 +373,9 @@ class AnnotationManager {
       }
 
       // Add highlighted text
-      const highlightClass = ann.level === 1 ? 'highlight-error-level-1' : 'highlight-error-level-2';
+      const highlightClass = `highlight-error-level-${ann.level}`;
       const annotatedText = this.plainText.substring(ann.start, ann.end + 1);
-      html += `<span class="${highlightClass}" data-start="${ann.start}" data-end="${ann.end}">${this.escapeHtml(annotatedText)}</span>`;
+      html += `<span class="${highlightClass}" data-start="${ann.start}" data-end="${ann.end}" data-level="${ann.level}">${this.escapeHtml(annotatedText)}</span>`;
 
       lastEnd = ann.end + 1;
     }
