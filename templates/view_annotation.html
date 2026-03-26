@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Annotation | AroTranslate</title>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            background-color: #f1f1f1;
+            font-family: sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        footer {
+            margin-top: auto;
+        }
+
+        h1 {
+            font-weight: bold;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .text-box {
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            padding: 15px;
+            background-color: #e9ecef;
+            min-height: 150px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .custom-heading p {
+            color: #6c757d;
+            font-weight: 510;
+            margin-bottom: 0;
+        }
+
+        .no-style {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .no-style:hover,
+        .no-style:focus,
+        .no-style:visited,
+        .no-style:active {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .rate {
+            float: left;
+            height: 46px;
+            padding: 0 10px;
+            display: flex;
+            flex-direction: row-reverse;
+        }
+        .rate:not(:checked) > input {
+            position:absolute;
+            top:-9999px;
+        }
+        .rate:not(:checked) > label {
+            float:right;
+            width:1em;
+            overflow:hidden;
+            white-space:nowrap;
+            cursor:pointer;
+            font-size:30px;
+            color:#ccc;
+        }
+        .rate:not(:checked) > label:before {
+            content: '★ ';
+        }
+        .rate > input:checked ~ label {
+            color: #ffc700;    
+        }
+        .rate:not(:checked) > label:hover,
+        .rate:not(:checked) > label:hover ~ label {
+            color: #deb217;  
+        }
+        .rate > input:checked + label:hover,
+        .rate > input:checked + label:hover ~ label,
+        .rate > input:checked ~ label:hover,
+        .rate > input:checked ~ label:hover ~ label,
+        .rate > label:hover ~ input:checked ~ label {
+            color: #c59b08;
+        }
+
+        .badge-edit {
+            background-color: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .badge-view {
+            background-color: #6c757d;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .error-right-click-menu {
+            display: none;
+            z-index: 1000;
+            position: absolute;
+            overflow: hidden;
+            border: 1px solid #CCC;
+            white-space: nowrap;
+            font-family: sans-serif;
+            background: #FFF;
+            color: #333;
+            border-radius: 5px;
+            margin: 0px;
+            padding-left: 0;
+        }
+
+        .error-right-click-menu li {
+            padding: 4px 8px;
+            cursor: pointer;
+            list-style-type: none;
+            color: whitesmoke;
+        }
+
+        .error-right-click-menu li:hover {
+            background-color: #DEF;
+        }
+
+        #clear-error {
+            color: black;
+        }
+
+        .annotation-level-badge {
+            padding: 5px 10px;
+            border-radius: 4px;
+            text-transform: capitalize;
+        }
+
+        .dropdown-menu {
+            z-index: 1000;
+        }
+
+        @media (max-width: 767.98px) {
+            .container {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body style="padding-left: 15px; padding-right: 15px;">
+    <header>
+        <nav>
+            <div class="container mt-5">
+                <div class="row d-flex align-items-center">
+                    <div class="col-6 text-left">
+                        <a href="/" class="no-style"><h3 class="m-0"><b>AroTranslate</b></h3></a>
+                    </div>
+                    <div class="col-6 d-flex justify-content-end align-items-center">
+
+                        <div class="dropdown me-3">
+                            <a class="nav-link dropdown-toggle" href="#" id="dropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                English
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+                                <li><a class="dropdown-item active" href="#" onclick="setLang('en')">English</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="setLang('rup')">Armãnã</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="setLang('ron')">Românǎ</a></li>
+                            </ul>
+                        </div>
+                        <a href="/about" class="custom-heading"><p id="about-us">About Us</p></a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="container mt-5">
+            <div class="row mb-3">
+                <div class="col-12">
+                    <h4 id="annotation-details">Annotation Details
+                        {% if can_edit %}
+                        <span class="badge-edit" id="badge-editable">Editable</span>
+                        {% else %}
+                        <span class="badge-view" id="badge-view-only">View Only</span>
+                        {% endif %}
+                    </h4>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <h5 id="original-text-label">Original Text ({{ annotation.input_language }})</h5>
+                    <div class="text-box">{{ annotation.original_text }}</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <h5 id="translated-text-label">Translated Text ({{ annotation.output_language }})</h5>
+                    <div class="text-box" id="translatedText" {% if can_edit %}contenteditable="true" onbeforeinput="return false"{% endif %}>{{ annotation.translated_text }}</div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8 mb-3">
+                    <div class="form-group textarea-container">
+                        <label for="feedback" class="sr-only">Feedback</label>
+                        <textarea id="feedback" class="form-control" rows="3" placeholder="Your feedback is welcome!">{{ annotation.feedback }}</textarea>
+                    </div>
+                </div>
+
+                <div class="col-md-4 d-flex align-items-center midpoint-centered-div">
+                    <div style="margin-right: 10px;">Rate your experience:</div>
+                    <div id="stars" class="rate">
+                        <input type="radio" id="star5" name="rate" value="5" />
+                        <label for="star5" title="5 stars"></label>
+                        <input type="radio" id="star4" name="rate" value="4" />
+                        <label for="star4" title="4 stars"></label>
+                        <input type="radio" id="star3" name="rate" value="3" />
+                        <label for="star3" title="3 stars"></label>
+                        <input type="radio" id="star2" name="rate" value="2" />
+                        <label for="star2" title="2 stars"></label>
+                        <input type="radio" id="star1" name="rate" value="1" />
+                        <label for="star1" title="1 star"></label>
+                    </div>
+                </div>
+            </div>
+
+            {% if can_edit %}
+            <div id="turnstile-container" class="mt-3"></div>
+            <div class="row mt-2">
+                <div class="col-12">
+                    <button id="updateAnnotations" class="btn btn-success"><span id="update-button-text">Update Annotations</span></button>
+                    <small class="text-muted ml-2" id="right-click-hint"><i class="fas fa-info-circle"></i> To annotate errors: select text in the translation, then right-click to choose an error level.</small>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if annotation.annotations and annotation.annotations|length > 0 %}
+            <div class="row mt-4">
+                <div class="col-12">
+                    <h5><span id="error-annotations-label">Error Annotations</span> ({{ annotation.annotations|length }})</h5>
+                    <ul class="list-group" id="annotationsList">
+                        {% for ann in annotation.annotations %}
+                        <li class="list-group-item">
+                            <span class="badge annotation-level-badge" data-level="{{ ann.level }}">
+                                {{ ann.level }}
+                            </span>
+                            <strong class="position-label">Position:</strong> {{ ann.start }} - {{ ann.end }} |
+                            <strong class="text-label">Text:</strong> "{{ annotation.translated_text[ann.start:ann.end + 1] }}"
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="row mt-4">
+                <div class="col-12">
+                    <a href="/" class="btn btn-primary" id="back-to-translator">Back to Translator</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p style="text-align: center; color: grey;">
+            Made with <span style="color: red;" aria-hidden="true">&#10084;</span><span class="sr-only">love</span>
+        </p>
+    </footer>
+
+    {% if can_edit %}
+    <ul class='error-right-click-menu'>
+        <!-- Menu items are dynamically generated by AnnotationManager -->
+    </ul>
+    {% endif %}
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="{{ url_for('static', filename='js/annotations.js') }}"></script>
+    <script>
+        // Initialize annotation manager with initial annotations
+        const initialAnnotations = {{ annotation.annotations|tojson|safe }};
+
+        const annotationManager = new AnnotationManager({
+            targetElementId: 'translatedText',
+            menuSelector: '.error-right-click-menu',
+            initialAnnotations: initialAnnotations || []
+        });
+
+        {% if can_edit %}
+        // Update annotations button
+        let _turnstileWidgetId = null;
+
+        $("#updateAnnotations").on("click", function () {
+            if (_turnstileWidgetId !== null) {
+                turnstile.reset(_turnstileWidgetId);
+                return;
+            }
+            _turnstileWidgetId = turnstile.render('#turnstile-container', {
+                sitekey: '{{ turnstile_site_key }}',
+                callback: function (token) {
+                    const translated_text = annotationManager.getText();
+                    const annotations = annotationManager.getAllAnnotations();
+
+                    const requestData = {
+                        private_id: "{{ annotation.private_id }}",
+                        annotations: annotations,
+                        stars: document.querySelector('input[name="rate"]:checked') ? document.querySelector('input[name="rate"]:checked').value : 0,
+                        feedback: document.getElementById('feedback').value,
+                        turnstile_token: token
+                    };
+
+                    fetch('/annotations/{{ annotation._id }}', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(requestData)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        const messages = {
+                            "ron": "Adnotările au fost actualizate cu succes!",
+                            "rup": "Adnotarilji s-actualizar cu successu!",
+                            "en": "Annotations updated successfully!"
+                        };
+                        alert(messages[currentLang]);
+                        location.reload();
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        const messages = {
+                            "ron": "Eroare la actualizarea adnotărilor.",
+                            "rup": "Eroarã la actualizarea a adnotariljei.",
+                            "en": "Error updating annotations."
+                        };
+                        alert(messages[currentLang]);
+                    });
+                }
+            });
+        });
+        {% endif %}
+
+        var currentLang = 'en';
+
+        // Multilingual support
+        function setLang(lang) {
+            let contents = {
+                "ron": {
+                    "about-us": "Despre Noi",
+                    "annotation-details": "Detalii Adnotare",
+                    "badge-editable": "Editabil",
+                    "badge-view-only": "Numai Vizualizare",
+                    "original-text-label": "Text Original",
+                    "translated-text-label": "Text Tradus",
+                    "update-button-text": "Actualizează Adnotările",
+                    "right-click-hint": "Pentru a adnota erori: selectați text din traducere, apoi clic dreapta pentru a alege nivelul erorii.",
+                    "error-annotations-label": "Adnotări de Eroare",
+                    "position-label": "Poziție:",
+                    "text-label": "Text:",
+                    "rating-label": "Evaluare",
+                    "feedback-label": "Comentarii",
+                    "back-to-translator": "Înapoi la Traducător",
+                    "star1": "1 stea",
+                    "star2": "2 stele",
+                    "star3": "3 stele",
+                    "star4": "4 stele",
+                    "star5": "5 stele",
+                    "update-success": "Adnotările au fost actualizate cu succes!",
+                    "update-error": "Eroare la actualizarea adnotărilor."
+                },
+                "rup": {
+                    "about-us": "Ti Noi",
+                    "annotation-details": "Detalii di Adnotari",
+                    "badge-editable": "Editabil",
+                    "badge-view-only": "Numa Vididzari",
+                    "original-text-label": "Textu Original",
+                    "translated-text-label": "Textu Apridutsit",
+                    "update-button-text": "Actualizeadzã Adnotarilji",
+                    "right-click-hint": "Trã s-adnotezi eroari: aledzi textu dit apridutsiri, soi clic dreptu trã s-aledzi nivellu a eroariljei.",
+                    "error-annotations-label": "Adnotari di Eroari",
+                    "position-label": "Positsia:",
+                    "text-label": "Textu:",
+                    "rating-label": "Evaluari",
+                    "feedback-label": "Comentarii",
+                    "back-to-translator": "Anapoi la Apridutsitore",
+                    "star1": "1 steauã",
+                    "star2": "2 steali",
+                    "star3": "3 steali",
+                    "star4": "4 steali",
+                    "star5": "5 steali",
+                    "update-success": "Adnotariljis-actualizar cu successu!",
+                    "update-error": "Eroarã la actualizarea a adnotariljei."
+                },
+                "en": {
+                    "about-us": "About Us",
+                    "annotation-details": "Annotation Details",
+                    "badge-editable": "Editable",
+                    "badge-view-only": "View Only",
+                    "original-text-label": "Original Text",
+                    "translated-text-label": "Translated Text",
+                    "update-button-text": "Update Annotations",
+                    "right-click-hint": "To annotate errors: select text in the translation, then right-click to choose an error level.",
+                    "error-annotations-label": "Error Annotations",
+                    "position-label": "Position:",
+                    "text-label": "Text:",
+                    "rating-label": "Rating",
+                    "feedback-label": "Feedback",
+                    "back-to-translator": "Back to Translator",
+                    "star1": "1 star",
+                    "star2": "2 stars",
+                    "star3": "3 stars",
+                    "star4": "4 stars",
+                    "star5": "5 stars",
+                    "update-success": "Annotations updated successfully!",
+                    "update-error": "Error updating annotations."
+                }
+            };
+
+            // Update elements by ID
+            let ids = [
+                "about-us", "annotation-details", "badge-editable", "badge-view-only",
+                "original-text-label", "translated-text-label", "update-button-text",
+                "right-click-hint", "error-annotations-label", "rating-label",
+                "feedback-label", "back-to-translator"
+            ];
+
+            for (var i = 0; i < ids.length; i++) {
+                var element = document.getElementById(ids[i]);
+                if (element) {
+                    element.textContent = contents[lang][ids[i]];
+                }
+            }
+
+            // Update elements by class
+            var positionLabels = document.querySelectorAll('.position-label');
+            for (var i = 0; i < positionLabels.length; i++) {
+                positionLabels[i].textContent = contents[lang]["position-label"];
+            }
+
+            var textLabels = document.querySelectorAll('.text-label');
+            for (var i = 0; i < textLabels.length; i++) {
+                textLabels[i].textContent = contents[lang]["text-label"];
+            }
+
+            // Update star labels
+            for (var i = 1; i <= 5; i++) {
+                var starLabel = document.getElementById('star-label-' + i);
+                if (starLabel) {
+                    starLabel.setAttribute('title', contents[lang]['star' + i]);
+                }
+            }
+
+            // Store language preference
+            currentLang = lang;
+        }
+
+        // Dropdown functionality (similar to index.html)
+        $(document).ready(function() {
+            $('.dropdown-toggle').on('click', function() {
+                var $this = $(this);
+                var $dropdownMenu = $this.next('.dropdown-menu');
+
+                $dropdownMenu.toggleClass('show');
+
+                $(document).on('click', function(e) {
+                    if (!$this.is(e.target) && $this.has(e.target).length === 0) {
+                        $dropdownMenu.removeClass('show');
+                    }
+                });
+            });
+
+            $('.dropdown-item').on('click', function() {
+                var $this = $(this);
+                var $dropdownToggle = $this.closest('.dropdown').find('.dropdown-toggle');
+                $dropdownToggle.text($this.text());
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Load stars
+            const stars = {{ annotation.stars|default(0) }};
+            if (stars > 0) {
+                const starInput = document.getElementById('star' + stars);
+                if (starInput) {
+                    starInput.checked = true;
+                }
+            }
+
+            // Apply colors to annotation badges
+            try {
+                const response = await fetch('/error-levels');
+                if (response.ok) {
+                    const data = await response.json();
+                    const errorLevels = data.error_levels || [];
+                    const colorMap = {};
+                    errorLevels.forEach(level => {
+                        colorMap[level.name] = level.color;
+                    });
+
+                    // Apply colors to badges
+                    document.querySelectorAll('.annotation-level-badge').forEach(badge => {
+                        const levelName = badge.dataset.level;
+                        if (colorMap[levelName]) {
+                            badge.style.backgroundColor = colorMap[levelName];
+                            badge.style.color = 'white';
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to fetch error levels:', error);
+            }
+        });
+    </script>
+</body>
+</html>

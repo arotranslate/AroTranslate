@@ -1,0 +1,558 @@
+import logging
+import os
+import requests as http_requests
+from flask import Flask, jsonify, abort, request, render_template, redirect, url_for, flash
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_talisman import Talisman
+from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.security import check_password_hash, generate_password_hash
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+
+from config import Config
+from services.translation_service import (translate_text,
+                                          convert_diacritics_from_orthography,
+                                          )
+from services.db_repository import get_db_repository
+from models import Annotation, User
+from utils.text_processing import get_language_code
+from utils.logger import configure_logging
+
+configure_logging()
+
+logger = logging.getLogger(__name__)
+
+try:
+    db_repo = get_db_repository()
+except Exception as e:
+    logger.error(f"Failed to initialize MongoDB repository: {e}")
+    logger.warning("Application will continue without database functionality")
+
+app = Flask(__name__)
+if not Config.SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable must be set")
+
+app.config['SECRET_KEY'] = Config.SECRET_KEY
+app.config['TURNSTILE_SITE_KEY'] = Config.TURNSTILE_SITE_KEY
+app.config['TURNSTILE_SECRET_KEY'] = Config.TURNSTILE_SECRET_KEY
+
+if Config.TALISMAN:
+    logger.info("Using Talisman...")
+    Talisman(app, force_https=True)
+
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
+logger.info(f'{Config.STORAGE_URI}  {Config.RATE_LIMIT}')
+
+limiter = Limiter(get_remote_address,
+                app=app,
+                default_limits=[Config.RATE_LIMIT],
+                storage_uri=Config.STORAGE_URI,
+                )
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in to access this page.'
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return db_repo.get_user_by_id(user_id)
+
+def verify_turnstile(token):
+    secret = app.config.get("TURNSTILE_SECRET_KEY")
+    if not secret:
+        return True  # skip verification if not configured
+    resp = http_requests.post(
+        "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+        data={"secret": secret, "response": token},
+        timeout=5,
+    )
+    return resp.json().get("success", False)
+
+
+def initialize_default_admin():
+    try:
+        if not hasattr(db_repo, '_users_collection') or db_repo._users_collection is None:
+            logger.warning("Database not initialized, skipping default admin creation")
+            return
+
+        user_count = db_repo._users_collection.count_documents({})
+
+        if user_count == 0:
+            default_username = Config.DEFAULT_ADMIN_USERNAME
+            default_password = Config.DEFAULT_ADMIN_PASSWORD
+
+            if default_username is None or default_password is None:
+                raise ValueError("Default username and password must be set in environment variables")
+
+            password_hash = generate_password_hash(default_password, method='pbkdf2:sha256')
+            db_repo.create_user(
+                username=default_username,
+                password_hash=password_hash,
+                email=None
+            )
+
+            logger.info(f"✓ Default admin user created automatically: username='{default_username}'")
+            logger.warning(f"SECURITY: Default admin credentials are in use. Please change the password after first login!")
+        else:
+            logger.info(f"User database initialized with {user_count} user(s)")
+
+    except Exception as e:
+        logger.error(f"Failed to initialize default admin user: {e}")
+
+initialize_default_admin()
+
+@app.route("/")
+def index():
+    return render_template("index.html", turnstile_site_key=app.config["TURNSTILE_SITE_KEY"])
+
+
+@app.route("/health")
+def health():
+    health_status = {
+        "status": "healthy",
+        "services": {
+            "api": "up"
+        }
+    }
+
+    try:
+        db_repo.client.admin.command('ping')
+        health_status["services"]["db"] = "up"
+    except Exception as e:
+        health_status["services"]["db"] = "down"
+        health_status["status"] = "degraded"
+        logger.warning(f"MongoDB health check failed: {e}")
+
+    status_code = 200 if health_status["status"] == "healthy" else 503
+    return jsonify(health_status), status_code
+
+
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
+
+@app.route("/admin")
+@login_required
+def admin_dashboard():
+    return render_template("admin_dashboard.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
+@limiter.limit("10 per minute")
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('admin_dashboard'))
+
+    if request.method == "POST":
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+
+        if not username or not password:
+            flash('Username and password are required.', 'error')
+            return render_template('login.html')
+
+        user_data = db_repo.get_user_by_username(username)
+
+        if user_data and check_password_hash(user_data['password_hash'], password):
+            user = User(
+                user_id=str(user_data['_id']),
+                username=user_data['username'],
+            )
+
+            login_user(user)
+
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('admin_dashboard'))
+        else:
+            flash('Invalid username or password.', 'error')
+            logger.warning(f"Failed login attempt for username: {username}")
+
+    return render_template('login.html')
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    flash('You have been logged out successfully.', 'success')
+
+    return redirect(url_for('login'))
+
+
+@app.route("/translate", methods=["POST"])
+@limiter.limit("50 per minute")
+def translate():
+    data = request.get_json()
+    if not data:
+        abort(400, description="Invalid JSON")
+
+    input_text = data.get("input_text", "").strip()
+    input_language = data.get("input_language", "").strip()
+    output_language = data.get("output_language", "").strip()
+    if input_language == output_language:
+        return jsonify({"translated_text": input_text, "translate_time": "0.0"})
+
+    if not input_text or not input_language or not output_language:
+        abort(400, description="Missing required fields")
+
+    lang_from = get_language_code(input_language)
+    lang_to = get_language_code(output_language)
+
+    if not lang_from or not lang_to:
+        abort(400, description="Invalid language selection.")
+
+    try:
+        translated_text, translate_time = translate_text(input_text, lang_from, lang_to)
+    except Exception as e:
+        logger.error(f"Translation error: {str(e)}")
+        abort(500, description="Translation failed")
+
+    return jsonify(
+        {
+            "translated_text": translated_text,
+            "translate_time": str(round(translate_time, 5)),
+        }
+    )
+
+
+@app.route("/diacritics", methods=["POST"])
+@limiter.limit("50 per minute")
+def diacritics():
+    data = request.get_json()
+    if not data:
+        abort(400, description="Invalid JSON")
+
+    orthography = data.get("orthography", "").strip()
+    text = data.get("text", "").strip()
+
+    if not orthography or not text:
+        abort(400, description="Invalid input.")
+
+    try:
+        converted_text = convert_diacritics_from_orthography(orthography, text)
+    except Exception:
+        abort(500, description="Diacritics conversion failed.")
+
+    return jsonify({"text": converted_text})
+
+
+@app.route("/annotations", methods=["GET"])
+@limiter.limit("50 per minute")
+def get_annotations():
+    try:
+        limit = request.args.get("limit", default=100, type=int)
+        offset = request.args.get("offset", default=0, type=int)
+
+        if limit < 1 or limit > 1000:
+            abort(400, description="Limit must be between 1 and 1000")
+
+        if offset < 0:
+            abort(400, description="Offset must be non-negative")
+
+        annotations = db_repo.get_all_annotations(limit=limit, skip=offset)
+
+        for annotation in annotations:
+            annotation["_id"] = str(annotation["_id"])
+
+        return jsonify({
+            "annotations": annotations,
+            "limit": limit,
+            "offset": offset,
+            "returned_count": len(annotations)
+        })
+    except Exception as e:
+        logger.error(f"Failed to retrieve annotations: {e}")
+        abort(500, description="Failed to retrieve annotations")
+
+
+@app.route("/annotations/<annotation_id>", methods=["GET"])
+@limiter.limit("50 per minute")
+def get_annotation_by_id(annotation_id):
+    try:
+        annotation = db_repo.get_annotation_by_id(annotation_id)
+
+        if annotation is None:
+            abort(404, description="Annotation not found")
+
+        annotation["_id"] = str(annotation["_id"])
+
+        return jsonify(annotation)
+    except Exception as e:
+        logger.error(f"Failed to retrieve annotation {annotation_id}: {e}")
+        abort(500, description="Failed to retrieve annotation")
+
+
+@app.route("/annotations/<annotation_id>", methods=["PATCH"])
+@limiter.limit("50 per minute")
+def update_annotation(annotation_id):
+    data = request.get_json()
+    if not data:
+        abort(400, description="Invalid JSON")
+
+    if not verify_turnstile(data.get("turnstile_token", "")):
+        abort(400, description="CAPTCHA verification failed")
+
+    private_id = data.get("private_id", "").strip()
+    if not private_id:
+        abort(400, description="Missing private_id")
+
+    original_text = data.get("original_text")
+    translated_text = data.get("translated_text")
+    annotations_data = data.get("annotations")
+    stars = data.get("stars", [])
+    feedback = data.get("feedback", [])
+
+    annotations = None
+    if annotations_data is not None:
+        if not isinstance(annotations_data, list):
+            abort(400, description="Annotations must be a list")
+
+        try:
+            annotations = [
+                Annotation(
+                    start=ann["start"],
+                    end=ann["end"],
+                    level=ann["level"]
+                )
+                for ann in annotations_data
+            ]
+        except (KeyError, TypeError) as e:
+            logger.error(f"Invalid annotation format: {e}")
+            abort(400, description="Invalid annotation format. Each annotation must have start, end, and level")
+        except ValueError as e:
+            logger.error(f"Invalid annotation values: {e}")
+            abort(400, description=str(e))
+
+    try:
+        result = db_repo.update_annotation(
+            document_id=annotation_id,
+            private_id=private_id,
+            original_text=original_text,
+            translated_text=translated_text,
+            annotations=annotations,
+            stars=stars,
+            feedback=feedback
+        )
+
+        if not result["matched"]:
+            abort(404, description="Annotation not found or private_id does not match")
+
+        if not result["modified"]:
+            return jsonify({
+                "status": "no_changes",
+                "message": "No fields were modified"
+            }), 200
+
+        return jsonify({
+            "status": "success",
+            "message": "Annotation updated successfully"
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Failed to update annotation: {e}")
+        abort(500, description="Failed to update annotation")
+
+
+@app.route("/annotation/<annotation_id>/<private_id>")
+@app.route("/annotation/<annotation_id>")
+def view_annotation(annotation_id, private_id=None):
+    try:
+        annotation = db_repo.get_annotation_by_id(annotation_id)
+
+        if annotation is None:
+            abort(404, description="Annotation not found")
+
+        # Check if private_id is provided and matches
+        can_edit = False
+        if private_id:
+            if annotation.get("private_id") == private_id:
+                can_edit = True
+            else:
+                abort(403, description="Invalid private ID")
+
+        # Convert ObjectId to string for template
+        annotation["_id"] = str(annotation["_id"])
+
+        return render_template(
+            "view_annotation.html",
+            annotation=annotation,
+            can_edit=can_edit,
+            turnstile_site_key=app.config["TURNSTILE_SITE_KEY"],
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to view annotation {annotation_id}: {e}")
+        abort(500, description="Failed to load annotation")
+
+
+# Error Levels API endpoints
+@app.route("/error-levels", methods=["GET"])
+@limiter.limit("100 per minute")
+def get_error_levels():
+    """Get all error levels (public endpoint for frontend)"""
+    try:
+        levels = db_repo.get_all_error_levels()
+        return jsonify({"error_levels": levels})
+    except Exception as e:
+        logger.error(f"Failed to retrieve error levels: {e}")
+        abort(500, description="Failed to retrieve error levels")
+
+
+@app.route("/error-levels", methods=["POST"])
+@login_required
+@limiter.limit("50 per minute")
+def create_error_level():
+    """Create a new error level (admin only)"""
+    data = request.get_json()
+    if not data:
+        abort(400, description="Invalid JSON")
+
+    name = data.get("name", "").strip().lower()
+    color = data.get("color", "").strip()
+    order = data.get("order")
+
+    if not name or not color:
+        abort(400, description="Name and color are required")
+
+    if not color.startswith("#") or len(color) not in [4, 7]:
+        abort(400, description="Invalid color format. Use hex color (e.g., #007bff)")
+
+    if order is None:
+        # Auto-assign order as max + 1
+        existing = db_repo.get_all_error_levels()
+        order = max([l["order"] for l in existing], default=0) + 1
+
+    try:
+        result = db_repo.create_error_level(name=name, color=color, order=order)
+        return jsonify(result), 201
+    except Exception as e:
+        if "duplicate key" in str(e).lower():
+            abort(409, description=f"Error level '{name}' already exists")
+        logger.error(f"Failed to create error level: {e}")
+        abort(500, description="Failed to create error level")
+
+
+@app.route("/error-levels/<level_id>", methods=["PUT"])
+@login_required
+@limiter.limit("50 per minute")
+def update_error_level(level_id):
+    """Update an error level (admin only)"""
+    data = request.get_json()
+    if not data:
+        abort(400, description="Invalid JSON")
+
+    name = data.get("name")
+    color = data.get("color")
+    order = data.get("order")
+
+    if name is not None:
+        name = name.strip().lower()
+    if color is not None:
+        color = color.strip()
+        if not color.startswith("#") or len(color) not in [4, 7]:
+            abort(400, description="Invalid color format. Use hex color (e.g., #007bff)")
+
+    try:
+        result = db_repo.update_error_level(level_id=level_id, name=name, color=color, order=order)
+        if not result["matched"]:
+            abort(404, description="Error level not found")
+        return jsonify({"status": "success", "modified": result["modified"]})
+    except Exception as e:
+        if "duplicate key" in str(e).lower():
+            abort(409, description=f"Error level '{name}' already exists")
+        logger.error(f"Failed to update error level: {e}")
+        abort(500, description="Failed to update error level")
+
+
+@app.route("/error-levels/<level_id>", methods=["DELETE"])
+@login_required
+@limiter.limit("50 per minute")
+def delete_error_level(level_id):
+    """Delete an error level (admin only)"""
+    try:
+        result = db_repo.delete_error_level(level_id=level_id)
+        if not result["deleted"]:
+            abort(404, description="Error level not found")
+        return jsonify({"status": "success"})
+    except Exception as e:
+        logger.error(f"Failed to delete error level: {e}")
+        abort(500, description="Failed to delete error level")
+
+
+@app.route("/admin/error-levels")
+@login_required
+def admin_error_levels():
+    """Admin page for managing error levels"""
+    return render_template("admin_error_levels.html")
+
+
+@app.route("/annotations", methods=["POST"])
+@limiter.limit("50 per minute")
+def create_annotation():
+    data = request.get_json()
+    if not data:
+        abort(400, description="Invalid JSON")
+
+    if not verify_turnstile(data.get("turnstile_token", "")):
+        abort(400, description="CAPTCHA verification failed")
+
+    original_text = data.get("original_text", "").strip()
+    translated_text = data.get("translated_text", "").strip()
+    annotations_data = data.get("annotations", [])
+    stars = data.get("stars", [])
+    feedback = data.get("feedback", [])
+    input_language = data.get("input_language", "").strip()
+    output_language = data.get("output_language", "").strip()
+    email = data.get("email")
+    if email:
+        email = email.strip() or None
+
+    if not original_text or not translated_text:
+        abort(400, description="Missing original_text or translated_text")
+
+    if not isinstance(annotations_data, list):
+        abort(400, description="Annotations must be a list")
+
+    try:
+        annotations = [
+            Annotation(
+                start=ann["start"],
+                end=ann["end"],
+                level=ann["level"]
+            )
+            for ann in annotations_data
+        ]
+    except (KeyError, TypeError) as e:
+        logger.error(f"Invalid annotation format: {e}")
+        abort(400, description="Invalid annotation format. Each annotation must have start, end, and level")
+    except ValueError as e:
+        logger.error(f"Invalid annotation values: {e}")
+        abort(400, description=str(e))
+
+    try:
+        result = db_repo.insert_annotation(
+            original_text=original_text,
+            translated_text=translated_text,
+            annotations=annotations,
+            stars=stars,
+            feedback=feedback,
+            input_language=input_language,
+            output_language=output_language,
+            email=email
+        )
+        return jsonify({
+            "id": result["id"],
+            "private_id": result["private_id"],
+            "status": "success",
+            "annotation_count": len(annotations)
+        }), 201
+    except Exception as e:
+        logger.error(f"Failed to save annotation: {e}")
+        abort(500, description="Failed to save annotation")
+
+
+if __name__ == "__main__":
+    app.run()
